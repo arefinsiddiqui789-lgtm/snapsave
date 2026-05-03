@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNoteStore } from '@/store/note-store';
-import { getNoteTitle, getNotePreview, getRelativeTime, getTagColorClass, groupNotesByDate, formatTime } from '@/types/note';
+import { getNoteTitle, getRelativeTime, getTagColorClass, groupNotesByDate, formatTime } from '@/types/note';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -245,7 +245,6 @@ export function Sidebar() {
               </div>
               {dateNotes.map((note) => {
                 const title = getNoteTitle(note);
-                const preview = getNotePreview(note);
                 const isActive = note.id === activeNoteId;
 
                 return (
@@ -260,7 +259,7 @@ export function Sidebar() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        {/* Note Name row */}
+                        {/* Note Name */}
                         <div className="flex items-center gap-1.5">
                           {note.isPinned && (
                             <Pin className="h-2.5 w-2.5 text-amber-500 shrink-0 fill-amber-500" />
@@ -275,12 +274,6 @@ export function Sidebar() {
                             {title}
                           </span>
                         </div>
-                        {/* Note Details preview */}
-                        {preview && (
-                          <p className="text-[11px] text-muted-foreground/60 mt-0.5 line-clamp-1 pl-0">
-                            {preview}
-                          </p>
-                        )}
                         {note.tags.length > 0 && (
                           <div className="flex gap-1 mt-1.5 flex-wrap">
                             {note.tags.slice(0, 3).map((tag) => (
