@@ -8,6 +8,7 @@ import { Editor } from '@/components/snapnote/editor';
 import { RightPanel } from '@/components/snapnote/right-panel';
 import { CreateNoteDialog } from '@/components/snapnote/create-note-dialog';
 import { AuthScreen } from '@/components/snapnote/auth-screen';
+import { PwaInstallBanner } from '@/components/snapnote/pwa-install-banner';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -250,6 +251,9 @@ export default function Home() {
           </div>
         </div>
 
+        {/* PWA Install Banner */}
+        <PwaInstallBanner />
+
         {/* Create Note Dialog */}
         <CreateNoteDialog />
       </div>
@@ -302,6 +306,9 @@ export default function Home() {
 
       {/* Right panel */}
       <RightPanel />
+
+      {/* PWA Install Banner */}
+      <PwaInstallBanner />
 
       {/* Create Note Dialog */}
       <CreateNoteDialog />

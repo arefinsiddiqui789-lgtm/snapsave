@@ -93,3 +93,30 @@ Stage Summary:
 - Sidebar now cleanly shows: Note Name (bold) → Note Details (brief preview, no duplication)
 - Content preview strips the title text if it appears at the start of content
 - No more duplicate/redundant text between the note name and the details preview
+
+---
+Task ID: 5
+Agent: Main
+Task: Add PWA (Progressive Web App) support for Add to Home Screen on iOS and Android
+
+Work Log:
+- Used sharp (Node.js) to resize uploaded image into multiple PWA icon sizes: 16x16, 32x32, 152x152, 180x180, 192x192, 512x512, and maskable 512x512
+- Created /public/manifest.webmanifest with proper PWA configuration (name, short_name, icons, display: standalone, theme_color, background_color, orientation)
+- Created /public/sw.js service worker with cache-first for static assets, network-first for navigation, offline fallback
+- Updated /src/app/layout.tsx with: Viewport export (device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover), Metadata export with manifest link, apple-touch-icon, apple-mobile-web-app-capable, apple-mobile-web-app-status-bar-style, apple-mobile-web-app-title, favicon icons, OpenGraph tags
+- Added service worker registration script in layout.tsx body
+- Created /src/components/snapnote/pwa-install-banner.tsx — a smart install prompt component that:
+  - Detects Android Chrome `beforeinstallprompt` event and shows "Install App" button
+  - Detects iOS Safari and shows "Tap Share → Add to Home Screen" instructions
+  - Auto-dismisses for 7 days after user closes it
+  - Does not show if already running as standalone (already installed)
+  - Shows app icon from the uploaded image
+- Added PwaInstallBanner component to both mobile and desktop layouts in page.tsx
+- All lint checks pass with zero errors
+
+Stage Summary:
+- App is now a full PWA that can be "Added to Home Screen" on both iOS and Android
+- Uploaded image is used as the app icon on home screen (all sizes generated)
+- Service worker provides offline caching for a native app feel
+- Smart install banner appears on mobile browsers prompting users to install
+- App runs in standalone mode (no browser chrome) when launched from home screen
