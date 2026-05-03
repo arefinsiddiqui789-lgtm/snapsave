@@ -177,7 +177,7 @@ export function Editor() {
       });
       const data = await res.json();
       if (data.summary) {
-        const newContent = `${localContent}\n\n---\n📝 **AI Summary:**\n${data.summary}`;
+        const newContent = `${localContent}\n\n---\n✨ Summary:\n${data.summary}`;
         isLocalEdit.current = true;
         setLocalContent(newContent);
         updateNote(activeNoteId!, { content: newContent });

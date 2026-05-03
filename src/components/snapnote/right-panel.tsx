@@ -163,7 +163,7 @@ export function RightPanel() {
       const data = await res.json();
       if (data.summary) {
         updateNote(activeNoteId!, {
-          content: `${activeNote.content}\n\n---\n📝 **AI Summary:**\n${data.summary}`,
+          content: `${activeNote.content}\n\n---\n✨ Summary:\n${data.summary}`,
         });
         toast.success('Summary added');
       } else {

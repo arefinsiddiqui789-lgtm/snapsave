@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
         {
           role: 'assistant',
           content:
-            'You are a professional summarizer. Your job is to create concise summaries of notes. Extract the key points and present them in a clear, brief format. Use bullet points for multiple key points. Return ONLY the summary, no explanations or metadata.',
+            'You are a friendly, clear-thinking person who explains things simply. When you summarize, write like you are telling a friend what the note says — use plain language, short sentences, and a natural conversational tone. No jargon, no formal bullet points, no robotic phrasing. Just a clear, easy-to-read summary that anyone can understand. Keep it short but make sure the main ideas come through. Return ONLY the summary text.',
         },
         {
           role: 'user',
-          content: `Summarize this note into key points:\n\n${content}`,
+          content: `Can you sum up what this note says in simple, easy-to-understand language?\n\n${content}`,
         },
       ],
       thinking: { type: 'disabled' },
