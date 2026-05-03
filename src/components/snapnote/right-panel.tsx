@@ -68,27 +68,23 @@ function CountdownTimer({ expiresAt }: { expiresAt: number }) {
 }
 
 export function RightPanel() {
-  const {
-    activeNoteId,
-    notes,
-    addTag,
-    removeTag,
-    togglePin,
-    toggleHighPriority,
-    setTemporary,
-    removeTemporary,
-    restoreVersion,
-    updateNote,
-    rightPanelOpen,
-    setRightPanelOpen,
-    isAiLoading,
-    setIsAiLoading,
-  } = useNoteStore();
+  const activeNoteId = useNoteStore((s) => s.activeNoteId);
+  const activeNote = useNoteStore((s) => s.notes.find((n) => n.id === s.activeNoteId));
+  const addTag = useNoteStore((s) => s.addTag);
+  const removeTag = useNoteStore((s) => s.removeTag);
+  const togglePin = useNoteStore((s) => s.togglePin);
+  const toggleHighPriority = useNoteStore((s) => s.toggleHighPriority);
+  const setTemporary = useNoteStore((s) => s.setTemporary);
+  const removeTemporary = useNoteStore((s) => s.removeTemporary);
+  const restoreVersion = useNoteStore((s) => s.restoreVersion);
+  const updateNote = useNoteStore((s) => s.updateNote);
+  const rightPanelOpen = useNoteStore((s) => s.rightPanelOpen);
+  const setRightPanelOpen = useNoteStore((s) => s.setRightPanelOpen);
+  const isAiLoading = useNoteStore((s) => s.isAiLoading);
+  const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
 
   const [newTag, setNewTag] = useState('');
   const [showHistory, setShowHistory] = useState(false);
-
-  const activeNote = notes.find((n) => n.id === activeNoteId);
 
   const handleAddTag = useCallback(() => {
     if (!activeNoteId || !newTag.trim()) return;
@@ -287,7 +283,7 @@ export function RightPanel() {
                 }`}
               >
                 <Flame className="h-3 w-3" />
-                {activeNote.isHighPriority ? 'Priority' : 'Priority'}
+                Priority
               </button>
             </div>
           </div>

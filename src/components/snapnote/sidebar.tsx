@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNoteStore } from '@/store/note-store';
 import { getNoteTitle, getNotePreview, getRelativeTime, getTagColorClass, groupNotesByDate, formatTime } from '@/types/note';
 import { Input } from '@/components/ui/input';
@@ -19,30 +19,28 @@ import {
   PanelLeft,
   Sparkles,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export function Sidebar() {
-  const {
-    searchQuery,
-    setSearchQuery,
-    activeFilter,
-    setActiveFilter,
-    selectedTag,
-    setSelectedTag,
-    activeNoteId,
-    setActiveNote,
-    createNote,
-    getFilteredNotes,
-    getAllTags,
-    notes,
-    sidebarOpen,
-    setSidebarOpen,
-  } = useNoteStore();
+  const searchQuery = useNoteStore((s) => s.searchQuery);
+  const setSearchQuery = useNoteStore((s) => s.setSearchQuery);
+  const activeFilter = useNoteStore((s) => s.activeFilter);
+  const setActiveFilter = useNoteStore((s) => s.setActiveFilter);
+  const selectedTag = useNoteStore((s) => s.selectedTag);
+  const setSelectedTag = useNoteStore((s) => s.setSelectedTag);
+  const activeNoteId = useNoteStore((s) => s.activeNoteId);
+  const setActiveNote = useNoteStore((s) => s.setActiveNote);
+  const createNote = useNoteStore((s) => s.createNote);
+  const getFilteredNotes = useNoteStore((s) => s.getFilteredNotes);
+  const getAllTags = useNoteStore((s) => s.getAllTags);
+  const notes = useNoteStore((s) => s.notes);
+  const sidebarOpen = useNoteStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useNoteStore((s) => s.setSidebarOpen);
 
   const searchRef = useRef<HTMLInputElement>(null);
-  const filteredNotes = getFilteredNotes();
-  const allTags = getAllTags();
-  const groupedNotes = groupNotesByDate(filteredNotes);
+  const filteredNotes = useMemo(() => getFilteredNotes(), [getFilteredNotes, notes, searchQuery, activeFilter, selectedTag]);
+  const allTags = useMemo(() => getAllTags(), [getAllTags, notes]);
+  const groupedNotes = useMemo(() => groupNotesByDate(filteredNotes), [filteredNotes]);
 
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,13 +71,13 @@ export function Sidebar() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const filters: { key: typeof activeFilter; label: string; icon: React.ReactNode; count?: number }[] = [
+  const filters: { key: typeof activeFilter; label: string; icon: React.ReactNode; count?: number }[] = useMemo(() => [
     { key: 'all', label: 'All', icon: <FileText className="h-3 w-3" />, count: notes.length },
     { key: 'pinned', label: 'Pinned', icon: <Pin className="h-3 w-3" />, count: notes.filter(n => n.isPinned).length },
     { key: 'high-priority', label: 'Priority', icon: <Flame className="h-3 w-3" />, count: notes.filter(n => n.isHighPriority).length },
     { key: 'temporary', label: 'Temp', icon: <Clock className="h-3 w-3" />, count: notes.filter(n => n.isTemporary).length },
     { key: 'tags', label: 'Tags', icon: <Tag className="h-3 w-3" /> },
-  ];
+  ], [notes]);
 
   if (!sidebarOpen) {
     return (
@@ -251,67 +249,60 @@ export function Sidebar() {
                 const isActive = note.id === activeNoteId;
 
                 return (
-                  <motion.div
+                  <button
                     key={note.id}
-                    layout
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.12 }}
+                    onClick={() => setActiveNote(note.id)}
+                    className={`note-item w-full text-left px-3 py-2.5 rounded-lg mb-0.5 relative transition-colors ${
+                      isActive ? 'active' : ''
+                    } ${note.isHighPriority && !isActive ? 'priority-glow' : ''} ${
+                      note.isPinned && !isActive ? 'pin-glow' : ''
+                    }`}
                   >
-                    <button
-                      onClick={() => setActiveNote(note.id)}
-                      className={`note-item w-full text-left px-3 py-2.5 rounded-lg mb-0.5 relative transition-all ${
-                        isActive ? 'active' : ''
-                      } ${note.isHighPriority && !isActive ? 'priority-glow' : ''} ${
-                        note.isPinned && !isActive ? 'pin-glow' : ''
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            {note.isPinned && (
-                              <Pin className="h-2.5 w-2.5 text-amber-500 shrink-0 fill-amber-500" />
-                            )}
-                            {note.isHighPriority && (
-                              <Flame className="h-2.5 w-2.5 text-destructive shrink-0" />
-                            )}
-                            {note.isTemporary && (
-                              <Clock className="h-2.5 w-2.5 text-orange-500 shrink-0 countdown-pulse" />
-                            )}
-                            <span className={`text-[13px] font-medium truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                              {title}
-                            </span>
-                          </div>
-                          {preview && (
-                            <p className="text-[11px] text-muted-foreground/70 mt-0.5 line-clamp-1 pl-0">
-                              {preview}
-                            </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          {note.isPinned && (
+                            <Pin className="h-2.5 w-2.5 text-amber-500 shrink-0 fill-amber-500" />
                           )}
-                          {note.tags.length > 0 && (
-                            <div className="flex gap-1 mt-1.5 flex-wrap">
-                              {note.tags.slice(0, 3).map((tag) => (
-                                <span
-                                  key={tag}
-                                  className={`inline-flex px-1.5 py-0 rounded text-[9px] font-medium leading-4 ${getTagColorClass(tag)}`}
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                              {note.tags.length > 3 && (
-                                <span className="text-[9px] text-muted-foreground/50">
-                                  +{note.tags.length - 3}
-                                </span>
-                              )}
-                            </div>
+                          {note.isHighPriority && (
+                            <Flame className="h-2.5 w-2.5 text-destructive shrink-0" />
                           )}
+                          {note.isTemporary && (
+                            <Clock className="h-2.5 w-2.5 text-orange-500 shrink-0 countdown-pulse" />
+                          )}
+                          <span className={`text-[13px] font-medium truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                            {title}
+                          </span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground/40 shrink-0 mt-0.5 tabular-nums text-right leading-tight">
-                          <span className="block">{getRelativeTime(note.updatedAt)}</span>
-                          <span className="block text-[9px] text-muted-foreground/30">{formatTime(note.updatedAt)}</span>
-                        </span>
+                        {preview && (
+                          <p className="text-[11px] text-muted-foreground/70 mt-0.5 line-clamp-1 pl-0">
+                            {preview}
+                          </p>
+                        )}
+                        {note.tags.length > 0 && (
+                          <div className="flex gap-1 mt-1.5 flex-wrap">
+                            {note.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className={`inline-flex px-1.5 py-0 rounded text-[9px] font-medium leading-4 ${getTagColorClass(tag)}`}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {note.tags.length > 3 && (
+                              <span className="text-[9px] text-muted-foreground/50">
+                                +{note.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </button>
-                  </motion.div>
+                      <span className="text-[10px] text-muted-foreground/40 shrink-0 mt-0.5 tabular-nums text-right leading-tight">
+                        <span className="block">{getRelativeTime(note.updatedAt)}</span>
+                        <span className="block text-[9px] text-muted-foreground/30">{formatTime(note.updatedAt)}</span>
+                      </span>
+                    </div>
+                  </button>
                 );
               })}
             </div>

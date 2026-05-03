@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { useNoteStore } from '@/store/note-store';
-import { getNoteTitle, formatDateTime, formatTime, formatDate } from '@/types/note';
+import { formatDateTime, formatTime, formatDate } from '@/types/note';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -25,19 +25,16 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function Editor() {
-  const {
-    activeNoteId,
-    notes,
-    updateNote,
-    deleteNote,
-    togglePin,
-    toggleHighPriority,
-    createNote,
-    setIsAiLoading,
-    isAiLoading,
-  } = useNoteStore();
+  const activeNoteId = useNoteStore((s) => s.activeNoteId);
+  const activeNote = useNoteStore((s) => s.notes.find((n) => n.id === s.activeNoteId));
+  const updateNote = useNoteStore((s) => s.updateNote);
+  const deleteNote = useNoteStore((s) => s.deleteNote);
+  const togglePin = useNoteStore((s) => s.togglePin);
+  const toggleHighPriority = useNoteStore((s) => s.toggleHighPriority);
+  const createNote = useNoteStore((s) => s.createNote);
+  const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
+  const isAiLoading = useNoteStore((s) => s.isAiLoading);
 
-  const activeNote = notes.find((n) => n.id === activeNoteId);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -46,25 +43,50 @@ export function Editor() {
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
 
-  // Auto-save with debounce
+  // Local state for fast typing — avoids store re-renders on every keystroke
+  const [localTitle, setLocalTitle] = useState('');
+  const [localContent, setLocalContent] = useState('');
+  const isLocalEdit = useRef(false);
+
+  // Sync local state when active note changes
+  useEffect(() => {
+    if (activeNote) {
+      // Only sync if not currently editing (prevents cursor jump)
+      if (!isLocalEdit.current) {
+        setLocalTitle(activeNote.title);
+        setLocalContent(activeNote.content);
+      }
+      setLastSavedAt(activeNote.updatedAt);
+      // Auto-focus title on new empty note
+      if (!activeNote.content.trim() && !activeNote.title.trim()) {
+        setTimeout(() => titleRef.current?.focus(), 150);
+      }
+    }
+    isLocalEdit.current = false;
+  }, [activeNoteId]);
+
+  // Auto-save with debounce — writes to store
   const triggerAutoSave = useCallback(
     (field: 'title' | 'content', value: string) => {
       if (!activeNoteId) return;
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = setTimeout(() => {
-        const now = Date.now();
+        isLocalEdit.current = true; // prevent sync from overwriting
         updateNote(activeNoteId, { [field]: value });
+        const now = Date.now();
         setLastSavedAt(now);
         setShowSaved(true);
-        setTimeout(() => setShowSaved(false), 2500);
-      }, 400);
+        setTimeout(() => setShowSaved(false), 2000);
+      }, 300);
     },
     [activeNoteId, updateNote]
   );
 
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      triggerAutoSave('title', e.target.value);
+      const val = e.target.value;
+      setLocalTitle(val);
+      triggerAutoSave('title', val);
       // Auto-resize
       const target = e.target;
       target.style.height = 'auto';
@@ -75,7 +97,9 @@ export function Editor() {
 
   const handleContentChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      triggerAutoSave('content', e.target.value);
+      const val = e.target.value;
+      setLocalContent(val);
+      triggerAutoSave('content', val);
     },
     [triggerAutoSave]
   );
@@ -93,7 +117,7 @@ export function Editor() {
       titleRef.current.style.height = 'auto';
       titleRef.current.style.height = titleRef.current.scrollHeight + 'px';
     }
-  }, [activeNoteId, activeNote?.title]);
+  }, [activeNoteId]); // only re-run on note switch
 
   // Copy note content
   const handleCopy = useCallback(async () => {
@@ -112,7 +136,7 @@ export function Editor() {
 
   // AI Improve
   const handleImprove = useCallback(async () => {
-    if (!activeNote?.content.trim()) {
+    if (!localContent.trim()) {
       toast.error('Write something first');
       return;
     }
@@ -122,10 +146,12 @@ export function Editor() {
       const res = await fetch('/api/ai/improve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: activeNote.content }),
+        body: JSON.stringify({ content: localContent }),
       });
       const data = await res.json();
       if (data.improved) {
+        isLocalEdit.current = true;
+        setLocalContent(data.improved);
         updateNote(activeNoteId!, { content: data.improved });
         toast.success('Note improved by AI');
       } else {
@@ -136,11 +162,11 @@ export function Editor() {
     } finally {
       setIsAiLoading(false);
     }
-  }, [activeNote, activeNoteId, updateNote, setIsAiLoading]);
+  }, [localContent, activeNoteId, updateNote, setIsAiLoading]);
 
   // AI Summarize
   const handleSummarize = useCallback(async () => {
-    if (!activeNote?.content.trim()) {
+    if (!localContent.trim()) {
       toast.error('Write something first');
       return;
     }
@@ -150,13 +176,14 @@ export function Editor() {
       const res = await fetch('/api/ai/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: activeNote.content }),
+        body: JSON.stringify({ content: localContent }),
       });
       const data = await res.json();
       if (data.summary) {
-        updateNote(activeNoteId!, {
-          content: `${activeNote.content}\n\n---\n📝 **AI Summary:**\n${data.summary}`,
-        });
+        const newContent = `${localContent}\n\n---\n📝 **AI Summary:**\n${data.summary}`;
+        isLocalEdit.current = true;
+        setLocalContent(newContent);
+        updateNote(activeNoteId!, { content: newContent });
         toast.success('Summary added');
       } else {
         toast.error(data.error || 'Failed to summarize');
@@ -166,11 +193,11 @@ export function Editor() {
     } finally {
       setIsAiLoading(false);
     }
-  }, [activeNote, activeNoteId, updateNote, setIsAiLoading]);
+  }, [localContent, activeNoteId, updateNote, setIsAiLoading]);
 
   // AI Suggest Tags
   const handleSuggestTags = useCallback(async () => {
-    if (!activeNote?.content.trim()) {
+    if (!localContent.trim()) {
       toast.error('Write something first');
       return;
     }
@@ -180,14 +207,15 @@ export function Editor() {
       const res = await fetch('/api/ai/suggest-tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: activeNote.content }),
+        body: JSON.stringify({ content: localContent }),
       });
       const data = await res.json();
       if (data.tags && Array.isArray(data.tags)) {
         const { addTag } = useNoteStore.getState();
+        const currentNote = useNoteStore.getState().notes.find((n) => n.id === activeNoteId);
         let added = 0;
         data.tags.forEach((tag: string) => {
-          if (!activeNote.tags.includes(tag)) {
+          if (currentNote && !currentNote.tags.includes(tag)) {
             addTag(activeNoteId!, tag);
             added++;
           }
@@ -201,18 +229,7 @@ export function Editor() {
     } finally {
       setIsAiLoading(false);
     }
-  }, [activeNote, activeNoteId, setIsAiLoading]);
-
-  // Reset lastSavedAt when switching notes
-  useEffect(() => {
-    if (activeNote) {
-      setLastSavedAt(activeNote.updatedAt);
-      // Auto-focus title on new empty note
-      if (!activeNote.content.trim() && !activeNote.title.trim()) {
-        setTimeout(() => titleRef.current?.focus(), 150);
-      }
-    }
-  }, [activeNoteId]);
+  }, [localContent, activeNoteId, setIsAiLoading]);
 
   if (!activeNote) {
     return (
@@ -377,7 +394,7 @@ export function Editor() {
           {/* Title - clearly editable */}
           <textarea
             ref={titleRef}
-            value={activeNote.title}
+            value={localTitle}
             onChange={handleTitleChange}
             placeholder="Enter note title…"
             className="w-full text-2xl md:text-3xl font-bold bg-transparent border-none outline-none resize-none font-[family-name:var(--font-title)] text-foreground placeholder:text-muted-foreground/40 leading-tight overflow-hidden"
@@ -444,7 +461,7 @@ export function Editor() {
           {/* Content */}
           <textarea
             ref={contentRef}
-            value={activeNote.content}
+            value={localContent}
             onChange={handleContentChange}
             placeholder="Start writing your note…"
             className="editor-content w-full min-h-[50vh] bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed text-foreground/85 placeholder:text-muted-foreground/35 font-[family-name:var(--font-body)] focus:placeholder:text-muted-foreground/20 transition-colors"

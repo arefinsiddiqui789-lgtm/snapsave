@@ -59,6 +59,10 @@ function saveVersion(note: Note): NoteVersion {
   };
 }
 
+// Track last version save time per note to avoid saving too frequently
+const lastVersionSaveTime: Record<string, number> = {};
+const VERSION_SAVE_INTERVAL = 10000; // Only save version every 10 seconds minimum
+
 export const useNoteStore = create<NoteState>()(
   persist(
     (set, get) => ({
@@ -99,18 +103,25 @@ export const useNoteStore = create<NoteState>()(
           notes: state.notes.map((note) => {
             if (note.id !== id) return note;
 
-            const shouldSaveVersion =
+            // Only save version if content/title actually changed AND enough time has passed
+            const contentChanged =
               (updates.content !== undefined && updates.content !== note.content) ||
               (updates.title !== undefined && updates.title !== note.title);
 
-            const versions = shouldSaveVersion
-              ? [...note.versions.slice(-19), saveVersion(note)]
-              : note.versions;
+            const now = Date.now();
+            const lastSave = lastVersionSaveTime[id] || 0;
+            const shouldSaveVersion = contentChanged && (now - lastSave >= VERSION_SAVE_INTERVAL);
+
+            let versions = note.versions;
+            if (shouldSaveVersion) {
+              versions = [...note.versions.slice(-19), saveVersion(note)];
+              lastVersionSaveTime[id] = now;
+            }
 
             return {
               ...note,
               ...updates,
-              updatedAt: Date.now(),
+              updatedAt: now,
               versions,
             };
           }),
@@ -118,6 +129,26 @@ export const useNoteStore = create<NoteState>()(
       },
 
       setActiveNote: (id) => {
+        // Save a version of the current note before switching (if it has content)
+        const state = get();
+        if (state.activeNoteId) {
+          const currentNote = state.notes.find((n) => n.id === state.activeNoteId);
+          if (currentNote && (currentNote.content.trim() || currentNote.title.trim())) {
+            const now = Date.now();
+            const lastSave = lastVersionSaveTime[state.activeNoteId] || 0;
+            if (now - lastSave >= 5000) { // 5s minimum between saves on note switch
+              const version = saveVersion(currentNote);
+              set((s) => ({
+                notes: s.notes.map((n) =>
+                  n.id === state.activeNoteId
+                    ? { ...n, versions: [...n.versions.slice(-19), version] }
+                    : n
+                ),
+              }));
+              lastVersionSaveTime[state.activeNoteId] = now;
+            }
+          }
+        }
         set({ activeNoteId: id });
       },
 

@@ -24,3 +24,27 @@ Stage Summary:
 - Features: Instant editor, smart notes, AI assist, advanced search, pin/priority, self-destruct notes, version history, quick actions, keyboard shortcuts, offline-first
 - Clean, professional UI with teal/emerald color scheme, smooth animations, responsive layout
 - All lint checks pass with zero errors
+
+---
+Task ID: 2
+Agent: Main
+Task: Fix slow typing performance and add editable title with date/time display
+
+Work Log:
+- Diagnosed performance bottleneck: editor textareas read directly from Zustand store, causing re-render on every auto-save
+- Rewrote Editor component to use local state (localTitle, localContent) for instant typing — store only updated on debounced auto-save (300ms)
+- Added isLocalEdit ref to prevent store sync from overwriting local state during editing
+- Optimized store: version snapshots now only saved every 10 seconds minimum (not on every keystroke) and on note switch
+- Added version save on note switch (setActiveNote) with 5s cooldown
+- Optimized Sidebar: replaced motion.div with layout prop (very expensive) with plain buttons + transition-colors only
+- Optimized Sidebar: added useMemo for filteredNotes, allTags, groupedNotes, and filters
+- Optimized all 3 components (Editor, Sidebar, RightPanel) to use Zustand selectors instead of destructuring the entire store
+- Optimized page.tsx to use selectors too
+- All lint checks pass with zero errors/warnings
+
+Stage Summary:
+- Typing is now instant — local state decouples input from store updates
+- Version history no longer creates snapshots on every keystroke (10s minimum interval)
+- Sidebar no longer uses expensive Framer Motion layout animations on note items
+- All components use Zustand selectors for minimal re-renders
+- Title field is editable and separate from content, with date/time display

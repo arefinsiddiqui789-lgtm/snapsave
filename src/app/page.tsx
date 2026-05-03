@@ -23,16 +23,10 @@ import { toast } from 'sonner';
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
-  const {
-    createNote,
-    activeNoteId,
-    notes,
-    sidebarOpen,
-    setSidebarOpen,
-    rightPanelOpen,
-    setRightPanelOpen,
-    cleanupExpiredNotes,
-  } = useNoteStore();
+  const createNote = useNoteStore((s) => s.createNote);
+  const activeNoteId = useNoteStore((s) => s.activeNoteId);
+  const notes = useNoteStore((s) => s.notes);
+  const cleanupExpiredNotes = useNoteStore((s) => s.cleanupExpiredNotes);
 
   const [isMobile, setIsMobile] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -58,7 +52,7 @@ export default function Home() {
     if (notes.length === 0) {
       createNote();
     }
-  }, []);
+  }, [notes.length, createNote]);
 
   // Keyboard shortcuts
   useEffect(() => {
