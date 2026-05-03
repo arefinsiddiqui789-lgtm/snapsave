@@ -172,6 +172,16 @@ export function AuthScreen() {
               ? 'Your notes are stored locally on this device'
               : 'Your data stays on this device'}
           </p>
+
+          {/* Developer credit */}
+          <div className="text-center mt-4 pt-4 border-t border-border/30">
+            <p className="text-xs font-medium text-foreground">
+              Developed By Arefin Siddiqui
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Studying in Computer Science and Engineering at IUB
+            </p>
+          </div>
         </motion.div>
       </AnimatePresence>
     </div>
