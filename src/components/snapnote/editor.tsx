@@ -15,7 +15,6 @@ import {
   Minimize2,
   Maximize2,
   Check,
-  Wand2,
   List,
   Tags,
   Save,
@@ -133,36 +132,6 @@ export function Editor() {
     deleteNote(activeNoteId);
     toast.success('Note deleted');
   }, [activeNoteId, deleteNote]);
-
-  // AI Improve
-  const handleImprove = useCallback(async () => {
-    if (!localContent.trim()) {
-      toast.error('Write something first');
-      return;
-    }
-    setIsAiLoading(true);
-    setShowAIPanel(true);
-    try {
-      const res = await fetch('/api/ai/improve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: localContent }),
-      });
-      const data = await res.json();
-      if (data.improved) {
-        isLocalEdit.current = true;
-        setLocalContent(data.improved);
-        updateNote(activeNoteId!, { content: data.improved });
-        toast.success('Note improved by AI');
-      } else {
-        toast.error(data.error || 'Failed to improve note');
-      }
-    } catch {
-      toast.error('Something went wrong');
-    } finally {
-      setIsAiLoading(false);
-    }
-  }, [localContent, activeNoteId, updateNote, setIsAiLoading]);
 
   // AI Summarize
   const handleSummarize = useCallback(async () => {
@@ -343,16 +312,6 @@ export function Editor() {
             className="overflow-hidden border-b border-border/30"
           >
             <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary/5 to-transparent">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1.5 text-xs border-primary/20 hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-all"
-                onClick={handleImprove}
-                disabled={isAiLoading}
-              >
-                <Wand2 className="h-3 w-3" />
-                Improve
-              </Button>
               <Button
                 variant="outline"
                 size="sm"

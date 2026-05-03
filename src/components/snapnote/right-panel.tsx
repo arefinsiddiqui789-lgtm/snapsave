@@ -15,19 +15,15 @@ import {
   Plus,
   X,
   Calendar,
-  History,
-  RotateCcw,
   PanelRightClose,
   PanelRight,
   Sparkles,
   Timer,
-  Wand2,
   List,
   Tags,
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
 
 function CountdownTimer({ expiresAt }: { expiresAt: number }) {
   const [timeLeft, setTimeLeft] = useState('');
@@ -76,7 +72,6 @@ export function RightPanel() {
   const toggleHighPriority = useNoteStore((s) => s.toggleHighPriority);
   const setTemporary = useNoteStore((s) => s.setTemporary);
   const removeTemporary = useNoteStore((s) => s.removeTemporary);
-  const restoreVersion = useNoteStore((s) => s.restoreVersion);
   const updateNote = useNoteStore((s) => s.updateNote);
   const rightPanelOpen = useNoteStore((s) => s.rightPanelOpen);
   const setRightPanelOpen = useNoteStore((s) => s.setRightPanelOpen);
@@ -84,7 +79,6 @@ export function RightPanel() {
   const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
 
   const [newTag, setNewTag] = useState('');
-  const [showHistory, setShowHistory] = useState(false);
 
   const handleAddTag = useCallback(() => {
     if (!activeNoteId || !newTag.trim()) return;
@@ -107,33 +101,6 @@ export function RightPanel() {
     },
     [handleAddTag]
   );
-
-  // AI Improve
-  const handleImprove = useCallback(async () => {
-    if (!activeNote?.content.trim()) {
-      toast.error('Write something first');
-      return;
-    }
-    setIsAiLoading(true);
-    try {
-      const res = await fetch('/api/ai/improve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: activeNote.content }),
-      });
-      const data = await res.json();
-      if (data.improved) {
-        updateNote(activeNoteId!, { content: data.improved });
-        toast.success('Note improved by AI');
-      } else {
-        toast.error(data.error || 'Failed to improve');
-      }
-    } catch {
-      toast.error('Something went wrong');
-    } finally {
-      setIsAiLoading(false);
-    }
-  }, [activeNote, activeNoteId, updateNote, setIsAiLoading]);
 
   // AI Summarize
   const handleSummarize = useCallback(async () => {
@@ -396,75 +363,6 @@ export function RightPanel() {
 
           <Separator />
 
-          {/* Version History */}
-          <div className="space-y-2">
-            <button
-              className="flex items-center justify-between w-full"
-              onClick={() => setShowHistory(!showHistory)}
-            >
-              <h4 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                <History className="h-3 w-3 inline mr-1" />
-                History ({activeNote.versions.length})
-              </h4>
-              <motion.div animate={{ rotate: showHistory ? 180 : 0 }}>
-                <svg
-                  className="h-3 w-3 text-muted-foreground/40"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </motion.div>
-            </button>
-            <AnimatePresence>
-              {showHistory && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  {activeNote.versions.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground/40 py-1">
-                      No previous versions yet
-                    </p>
-                  ) : (
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {[...activeNote.versions].reverse().map((version) => (
-                        <button
-                          key={version.id}
-                          onClick={() => {
-                            restoreVersion(activeNote.id, version.id);
-                            toast.success('Version restored');
-                          }}
-                          className="w-full text-left px-2.5 py-2 rounded-lg bg-secondary/30 hover:bg-secondary/70 transition-colors group"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-muted-foreground tabular-nums">
-                              {formatDateTime(version.savedAt)}
-                            </span>
-                            <RotateCcw className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                          <p className="text-[10px] text-muted-foreground/60 mt-0.5 line-clamp-1">
-                            {version.title || version.content.slice(0, 40) || 'Empty note'}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <Separator />
-
           {/* AI Actions */}
           <div className="space-y-2">
             <h4 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
@@ -472,18 +370,6 @@ export function RightPanel() {
               AI Assistant
             </h4>
             <div className="space-y-1.5">
-              <button
-                onClick={handleImprove}
-                disabled={isAiLoading || !activeNote.content.trim()}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 hover:bg-primary/10 text-[11px] font-medium text-primary/80 hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
-              >
-                {isAiLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Wand2 className="h-3 w-3" />
-                )}
-                Improve Writing
-              </button>
               <button
                 onClick={handleSummarize}
                 disabled={isAiLoading || !activeNote.content.trim()}
