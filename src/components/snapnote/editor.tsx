@@ -256,7 +256,7 @@ export function Editor() {
             <span className="text-lg leading-none">+</span>
             New Note
           </Button>
-          <div className="mt-6 flex items-center justify-center gap-5 text-[11px] text-muted-foreground/35">
+          <div className="mt-6 flex items-center justify-center gap-5 text-[11px] text-muted-foreground">
             <span>
               <kbd className="px-1.5 py-0.5 rounded bg-secondary text-[10px] font-mono">Ctrl+N</kbd>
               {' '}new
@@ -340,7 +340,7 @@ export function Editor() {
       {/* Focus mode bar */}
       {isFocusMode && (
         <div className="flex items-center justify-between px-5 py-2">
-          <span className="text-xs text-muted-foreground/60 truncate max-w-[200px]">
+          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
             {localTitle || 'Untitled'}
           </span>
           <div className="flex items-center gap-3">
@@ -362,7 +362,7 @@ export function Editor() {
               )}
             </AnimatePresence>
             <button
-              className="text-[11px] text-muted-foreground/50 hover:text-foreground transition-colors"
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setIsFocusMode(false)}
             >
               Exit focus
@@ -380,13 +380,13 @@ export function Editor() {
             value={localTitle}
             onChange={handleTitleChange}
             placeholder="Note title…"
-            className="w-full text-2xl md:text-3xl font-bold bg-transparent border-none outline-none resize-none font-[family-name:var(--font-title)] text-foreground placeholder:text-muted-foreground/25 leading-tight overflow-hidden"
+            className="w-full text-2xl md:text-3xl font-bold bg-transparent border-none outline-none resize-none font-[family-name:var(--font-title)] text-foreground placeholder:text-muted-foreground leading-tight overflow-hidden"
             rows={1}
             style={{ height: 'auto' }}
           />
 
           {/* Meta — light, informational */}
-          <div className="flex items-center gap-2.5 mt-2.5 mb-6 text-[11px] text-muted-foreground/40 flex-wrap">
+          <div className="flex items-center gap-2.5 mt-2.5 mb-6 text-[11px] text-muted-foreground flex-wrap">
             <span>{formatDateTime(activeNote.createdAt)}</span>
             {activeNote.updatedAt !== activeNote.createdAt && (
               <>
@@ -449,13 +449,13 @@ export function Editor() {
             value={localContent}
             onChange={handleContentChange}
             placeholder="Start writing…"
-            className="w-full min-h-[55vh] bg-transparent border-none outline-none resize-none text-[15px] md:text-[16px] leading-[1.85] text-foreground/85 placeholder:text-muted-foreground/20 font-[family-name:var(--font-body)] transition-colors"
+            className="w-full min-h-[55vh] bg-transparent border-none outline-none resize-none text-[15px] md:text-[16px] leading-[1.85] text-foreground placeholder:text-muted-foreground font-[family-name:var(--font-body)] transition-colors"
           />
         </div>
       </div>
 
       {/* Bottom bar — quiet, like a book footer */}
-      <div className="flex items-center justify-between px-5 py-1.5 border-t border-border/25 text-[10px] text-muted-foreground/30">
+      <div className="flex items-center justify-between px-5 py-1.5 border-t border-border/40 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-3">
           {wordCount > 0 && (
             <>
@@ -476,7 +476,7 @@ export function Editor() {
             </span>
           )}
           {isFocusMode && (
-            <span className="text-primary/35">ESC to exit</span>
+            <span className="text-primary/60">ESC to exit</span>
           )}
         </div>
       </div>
@@ -512,10 +512,10 @@ function ToolBtn({
             ? 'bg-primary/10 text-primary'
             : 'bg-secondary/80'
           : destructive
-            ? 'text-muted-foreground/50 hover:text-destructive'
+            ? 'text-muted-foreground hover:text-destructive'
             : primary
-              ? 'text-primary/60 hover:text-primary hover:bg-primary/10'
-              : 'text-muted-foreground/50 hover:text-foreground'
+              ? 'text-primary/70 hover:text-primary hover:bg-primary/10'
+              : 'text-muted-foreground hover:text-foreground'
       } disabled:opacity-30 disabled:cursor-not-allowed`}
       onClick={onClick}
       title={title}

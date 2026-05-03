@@ -92,7 +92,7 @@ export default function Home() {
           </Sheet>
 
           <div className="flex items-center gap-2">
-            <h1 className="text-sm font-semibold font-[family-name:var(--font-title)]">
+            <h1 className="text-sm font-semibold font-[family-name:var(--font-title)] text-foreground">
               SnapNote Pro
             </h1>
           </div>

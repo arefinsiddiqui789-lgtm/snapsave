@@ -71,7 +71,7 @@ export function CreateNoteDialog() {
             <DialogTitle className="text-base font-bold font-[family-name:var(--font-title)]">
               New Note
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground/60 mt-0.5">
+            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
               Give it a name and add some details. You can edit anytime.
             </DialogDescription>
           </DialogHeader>
@@ -80,14 +80,14 @@ export function CreateNoteDialog() {
         {/* Form */}
         <div className="px-5 py-3 space-y-4" onKeyDown={handleKeyDown}>
           <div className="space-y-1.5">
-            <Label htmlFor="note-name" className="text-xs font-semibold text-foreground/80">
+            <Label htmlFor="note-name" className="text-xs font-semibold text-foreground">
               Note Name <span className="text-destructive/70">*</span>
             </Label>
             <Input
               id="note-name"
               ref={nameInputRef}
               placeholder="e.g. Meeting Notes, Project Ideas…"
-              className="h-9 text-sm border-border/50 focus:border-primary/40 transition-colors placeholder:text-muted-foreground/30"
+              className="h-9 text-sm border-border/50 focus:border-primary/40 transition-colors placeholder:text-muted-foreground"
               value={noteName}
               onChange={(e) => setNoteName(e.target.value)}
               maxLength={120}
@@ -95,17 +95,17 @@ export function CreateNoteDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="note-details" className="text-xs font-semibold text-foreground/80">
+            <Label htmlFor="note-details" className="text-xs font-semibold text-foreground">
               Note Details
             </Label>
             <Textarea
               id="note-details"
               placeholder="Write your note content here…"
-              className="min-h-[120px] text-sm border-border/50 focus:border-primary/40 transition-colors resize-none placeholder:text-muted-foreground/30"
+              className="min-h-[120px] text-sm border-border/50 focus:border-primary/40 transition-colors resize-none placeholder:text-muted-foreground"
               value={noteDetails}
               onChange={(e) => setNoteDetails(e.target.value)}
             />
-            <p className="text-[10px] text-muted-foreground/35">
+            <p className="text-[10px] text-muted-foreground">
               Optional — you can always add more later
             </p>
           </div>

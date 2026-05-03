@@ -115,14 +115,14 @@ export function Sidebar() {
           <h1 className="text-base font-bold tracking-tight font-[family-name:var(--font-title)] text-foreground">
             SnapNote
           </h1>
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+          <p className="text-[11px] text-muted-foreground mt-0.5">
             {notes.length} {notes.length === 1 ? 'note' : 'notes'}
           </p>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground/60 hover:text-foreground"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={() => setSidebarOpen(false)}
           title="Collapse"
         >
@@ -133,11 +133,11 @@ export function Sidebar() {
       {/* Search — simple, no icon background */}
       <div className="px-3 pb-3">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             ref={searchRef}
             placeholder="Search…"
-            className="pl-8 h-8 text-sm bg-secondary/50 border-transparent focus:border-primary/30 focus:bg-background transition-colors placeholder:text-muted-foreground/40"
+            className="pl-8 h-8 text-sm bg-secondary/50 border-transparent focus:border-primary/30 focus:bg-background transition-colors placeholder:text-muted-foreground"
             value={searchQuery}
             onChange={handleSearch}
             onKeyDown={handleKeyDown}
@@ -145,7 +145,7 @@ export function Sidebar() {
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -162,9 +162,9 @@ export function Sidebar() {
       <ScrollArea className="flex-1">
         <div className="py-2 px-2">
           {Object.keys(groupedNotes).length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/50">
-              <FileText className="h-8 w-8 mb-3 opacity-25" />
-              <p className="text-sm font-medium text-muted-foreground/60">No notes yet</p>
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+              <FileText className="h-8 w-8 mb-3 opacity-40" />
+              <p className="text-sm font-medium text-muted-foreground">No notes yet</p>
               <p className="text-xs mt-1">
                 {searchQuery ? 'Try a different search' : 'Create one to get started'}
               </p>
@@ -174,7 +174,7 @@ export function Sidebar() {
           {Object.entries(groupedNotes).map(([dateLabel, dateNotes]) => (
             <div key={dateLabel}>
               <div className="px-2.5 py-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {dateLabel}
                 </span>
               </div>
@@ -205,7 +205,7 @@ export function Sidebar() {
                             <Clock className="h-2.5 w-2.5 text-orange-400 shrink-0 countdown-pulse" />
                           )}
                           <span className={`text-[13px] font-semibold truncate leading-snug ${
-                            isActive ? 'text-primary' : 'text-foreground/90'
+                            isActive ? 'text-primary' : 'text-foreground'
                           }`}>
                             {title}
                           </span>
@@ -221,14 +221,14 @@ export function Sidebar() {
                               </span>
                             ))}
                             {note.tags.length > 3 && (
-                              <span className="text-[9px] text-muted-foreground/40">
+                              <span className="text-[9px] text-muted-foreground">
                                 +{note.tags.length - 3}
                               </span>
                             )}
                           </div>
                         )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground/35 shrink-0 mt-0.5 tabular-nums">
+                      <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5 tabular-nums">
                         {getRelativeTime(note.updatedAt)}
                       </span>
                     </div>

@@ -219,7 +219,7 @@ export function RightPanel() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-muted-foreground/50 hover:text-foreground"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={() => setRightPanelOpen(true)}
           title="Open details"
         >
@@ -233,17 +233,17 @@ export function RightPanel() {
     return (
       <div className="w-[240px] min-w-[240px] border-l border-border/60 bg-sidebar panel-transition flex flex-col">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
-          <span className="text-sm font-semibold font-[family-name:var(--font-title)] text-foreground/80">Details</span>
+          <span className="text-sm font-semibold font-[family-name:var(--font-title)] text-foreground">Details</span>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground/50"
+            className="h-7 w-7 text-muted-foreground"
             onClick={() => setRightPanelOpen(false)}
           >
             <PanelRightClose className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex-1 flex items-center justify-center text-muted-foreground/40 text-sm">
+        <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
           No note selected
         </div>
       </div>
@@ -260,11 +260,11 @@ export function RightPanel() {
     <div className="w-[240px] min-w-[240px] border-l border-border/60 bg-sidebar panel-transition flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
-        <span className="text-sm font-semibold font-[family-name:var(--font-title)] text-foreground/80">Details</span>
+        <span className="text-sm font-semibold font-[family-name:var(--font-title)] text-foreground">Details</span>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground/50"
+          className="h-7 w-7 text-muted-foreground"
           onClick={() => setRightPanelOpen(false)}
         >
           <PanelRightClose className="h-4 w-4" />
@@ -276,14 +276,14 @@ export function RightPanel() {
 
           {/* Status — toggle switches feel */}
           <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Status</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</p>
             <div className="flex gap-2">
               <button
                 onClick={() => togglePin(activeNote.id)}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   activeNote.isPinned
                     ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/15 dark:text-amber-400'
-                    : 'bg-secondary/40 text-muted-foreground/60 hover:bg-secondary/70 hover:text-foreground'
+                    : 'bg-secondary/40 text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
                 }`}
               >
                 <Pin className="h-3 w-3" />
@@ -294,7 +294,7 @@ export function RightPanel() {
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   activeNote.isHighPriority
                     ? 'bg-red-50 text-red-600 dark:bg-red-900/15 dark:text-red-400'
-                    : 'bg-secondary/40 text-muted-foreground/60 hover:bg-secondary/70 hover:text-foreground'
+                    : 'bg-secondary/40 text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
                 }`}
               >
                 <Flame className="h-3 w-3" />
@@ -305,7 +305,7 @@ export function RightPanel() {
 
           {/* Self-Destruct */}
           <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               <Timer className="h-3 w-3 inline mr-1" />
               Self-Destruct
             </p>
@@ -332,7 +332,7 @@ export function RightPanel() {
                         setTemporary(activeNote.id, d.key);
                         toast.success(`Self-destruct in ${d.label.toLowerCase()}`);
                       }}
-                      className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[10px] font-medium bg-secondary/40 text-muted-foreground/60 hover:bg-secondary/70 hover:text-foreground transition-all"
+                      className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[10px] font-medium bg-secondary/40 text-muted-foreground hover:bg-secondary/70 hover:text-foreground transition-all"
                     >
                       <Clock className="h-2.5 w-2.5" />
                       {d.short}
@@ -345,7 +345,7 @@ export function RightPanel() {
                   className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium transition-all ${
                     showCustomTimer
                       ? 'bg-primary/8 text-primary'
-                      : 'bg-secondary/40 text-muted-foreground/60 hover:bg-secondary/70 hover:text-foreground'
+                      : 'bg-secondary/40 text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
                   }`}
                 >
                   <Settings2 className="h-2.5 w-2.5" />
@@ -356,7 +356,7 @@ export function RightPanel() {
                   <div className="space-y-2 p-2.5 bg-secondary/20 rounded-md border border-border/30">
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="text-[9px] text-muted-foreground/40 block mb-1">Hours</label>
+                        <label className="text-[9px] text-muted-foreground block mb-1">Hours</label>
                         <Input
                           type="number"
                           min="0"
@@ -368,9 +368,9 @@ export function RightPanel() {
                           className="h-7 text-xs bg-background border-border/40 focus:border-primary/30 text-center"
                         />
                       </div>
-                      <span className="text-muted-foreground/30 text-xs pb-1.5">:</span>
+                      <span className="text-muted-foreground text-xs pb-1.5">:</span>
                       <div className="flex-1">
-                        <label className="text-[9px] text-muted-foreground/40 block mb-1">Min</label>
+                        <label className="text-[9px] text-muted-foreground block mb-1">Min</label>
                         <Input
                           type="number"
                           min="0"
@@ -400,7 +400,7 @@ export function RightPanel() {
 
           {/* Tags */}
           <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               <Tag className="h-3 w-3 inline mr-1" />
               Tags
             </p>
@@ -424,7 +424,7 @@ export function RightPanel() {
             <div className="flex gap-1.5">
               <Input
                 placeholder="Add tag…"
-                className="h-7 text-xs bg-secondary/30 border-transparent focus:border-primary/30 placeholder:text-muted-foreground/35"
+                className="h-7 text-xs bg-secondary/30 border-transparent focus:border-primary/30 placeholder:text-muted-foreground"
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={handleTagKeyDown}
@@ -432,7 +432,7 @@ export function RightPanel() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 text-muted-foreground/50 hover:text-primary hover:bg-primary/8"
+                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/8"
                 onClick={handleAddTag}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -442,25 +442,25 @@ export function RightPanel() {
 
           {/* Timestamps — like a book's publication info */}
           <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               <Calendar className="h-3 w-3 inline mr-1" />
               Timeline
             </p>
             <div className="space-y-1.5 text-[11px]">
               <div className="flex justify-between items-center px-0.5">
-                <span className="text-muted-foreground/45">Created</span>
-                <span className="text-foreground/65 font-medium">{formatDateTime(activeNote.createdAt)}</span>
+                <span className="text-muted-foreground">Created</span>
+                <span className="text-foreground font-medium">{formatDateTime(activeNote.createdAt)}</span>
               </div>
               <div className="flex justify-between items-center px-0.5">
-                <span className="text-muted-foreground/45">Modified</span>
-                <span className="text-foreground/65 font-medium">{formatDateTime(activeNote.updatedAt)}</span>
+                <span className="text-muted-foreground">Modified</span>
+                <span className="text-foreground font-medium">{formatDateTime(activeNote.updatedAt)}</span>
               </div>
             </div>
           </div>
 
           {/* AI — clean, not flashy */}
           <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               <Sparkles className="h-3 w-3 inline mr-1" />
               AI
             </p>
@@ -468,7 +468,7 @@ export function RightPanel() {
               <button
                 onClick={handleSummarize}
                 disabled={isAiLoading || !activeNote.content.trim()}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/50 text-[11px] font-medium text-foreground/70 hover:text-foreground transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/50 text-[11px] font-medium text-foreground hover:text-foreground transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {isAiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <List className="h-3 w-3" />}
                 Summarize
@@ -476,7 +476,7 @@ export function RightPanel() {
               <button
                 onClick={handleSuggestTags}
                 disabled={isAiLoading || !activeNote.content.trim()}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/50 text-[11px] font-medium text-foreground/70 hover:text-foreground transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/50 text-[11px] font-medium text-foreground hover:text-foreground transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {isAiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Tags className="h-3 w-3" />}
                 Auto-Tag
