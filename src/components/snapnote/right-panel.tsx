@@ -160,17 +160,21 @@ export function RightPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: activeNote.content }),
       });
+      if (!res.ok) {
+        toast.error('Failed to reach AI. Please try again.');
+        return;
+      }
       const data = await res.json();
       if (data.summary) {
         updateNote(activeNoteId!, {
           content: `${activeNote.content}\n\n---\n✨ Summary:\n${data.summary}`,
         });
-        toast.success('Summary added');
+        toast.success('Summary added!');
       } else {
         toast.error(data.error || 'Failed to summarize');
       }
     } catch {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsAiLoading(false);
     }
@@ -189,6 +193,10 @@ export function RightPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: activeNote.content }),
       });
+      if (!res.ok) {
+        toast.error('Failed to reach AI. Please try again.');
+        return;
+      }
       const data = await res.json();
       if (data.tags && Array.isArray(data.tags)) {
         let added = 0;

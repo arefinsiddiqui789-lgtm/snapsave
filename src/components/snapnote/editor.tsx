@@ -21,6 +21,8 @@ import {
   Calendar,
   Type,
   AlignLeft,
+  Loader2,
+  Wand2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -58,7 +60,6 @@ export function Editor() {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-  const [showAIPanel, setShowAIPanel] = useState(false);
 
   // Local state for fast typing — avoids store re-renders on every keystroke
   const [localTitle, setLocalTitle] = useState('');
@@ -80,6 +81,19 @@ export function Editor() {
     }
     isLocalEdit.current = false;
   }, [activeNoteId]);
+
+  // Flush pending auto-save immediately (used before AI calls)
+  const flushAutoSave = useCallback(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    if (activeNoteId) {
+      isLocalEdit.current = true;
+      updateNote(activeNoteId, { title: localTitle, content: localContent });
+      setLastSavedAt(Date.now());
+    }
+  }, [activeNoteId, localTitle, localContent, updateNote]);
 
   // Auto-save with debounce — writes to store
   const triggerAutoSave = useCallback(
@@ -161,36 +175,41 @@ export function Editor() {
     toast.success('Note deleted');
   }, [activeNoteId, deleteNote]);
 
-  // AI Summarize
+  // AI Summarize — one-click, always accessible
   const handleSummarize = useCallback(async () => {
     if (!localContent.trim()) {
       toast.error('Write something first');
       return;
     }
+    // Flush any pending save so AI reads latest content
+    flushAutoSave();
     setIsAiLoading(true);
-    setShowAIPanel(true);
     try {
       const res = await fetch('/api/ai/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: localContent }),
       });
+      if (!res.ok) {
+        toast.error('Failed to reach AI. Please try again.');
+        return;
+      }
       const data = await res.json();
       if (data.summary) {
         const newContent = `${localContent}\n\n---\n✨ Summary:\n${data.summary}`;
         isLocalEdit.current = true;
         setLocalContent(newContent);
         updateNote(activeNoteId!, { content: newContent });
-        toast.success('Summary added');
+        toast.success('Summary added!');
       } else {
         toast.error(data.error || 'Failed to summarize');
       }
     } catch {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsAiLoading(false);
     }
-  }, [localContent, activeNoteId, updateNote, setIsAiLoading]);
+  }, [localContent, activeNoteId, updateNote, setIsAiLoading, flushAutoSave]);
 
   // AI Suggest Tags
   const handleSuggestTags = useCallback(async () => {
@@ -198,14 +217,18 @@ export function Editor() {
       toast.error('Write something first');
       return;
     }
+    flushAutoSave();
     setIsAiLoading(true);
-    setShowAIPanel(true);
     try {
       const res = await fetch('/api/ai/suggest-tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: localContent }),
       });
+      if (!res.ok) {
+        toast.error('Failed to reach AI. Please try again.');
+        return;
+      }
       const data = await res.json();
       if (data.tags && Array.isArray(data.tags)) {
         const { addTag } = useNoteStore.getState();
@@ -222,11 +245,11 @@ export function Editor() {
         toast.error(data.error || 'Failed to suggest tags');
       }
     } catch {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsAiLoading(false);
     }
-  }, [localContent, activeNoteId, setIsAiLoading]);
+  }, [localContent, activeNoteId, setIsAiLoading, flushAutoSave]);
 
   const wordCount = getWordCount(localContent);
   const charCount = getCharCount(localContent);
@@ -303,12 +326,19 @@ export function Editor() {
               destructive
             />
             <div className="w-px h-4 bg-border/60 mx-1" />
+            {/* Direct Summarize button — always visible, one click */}
             <ToolbarButton
-              icon={<Sparkles className="h-3.5 w-3.5" />}
-              onClick={() => setShowAIPanel(!showAIPanel)}
-              title="AI Tools"
-              active={showAIPanel}
+              icon={isAiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+              onClick={handleSummarize}
+              title="Summarize"
               primary
+              disabled={isAiLoading || !localContent.trim()}
+            />
+            <ToolbarButton
+              icon={<Tags className="h-3.5 w-3.5" />}
+              onClick={handleSuggestTags}
+              title="Auto-Tag"
+              disabled={isAiLoading || !localContent.trim()}
             />
           </div>
 
@@ -326,6 +356,12 @@ export function Editor() {
                 </motion.div>
               )}
             </AnimatePresence>
+            {isAiLoading && (
+              <span className="flex items-center gap-1.5 text-[11px] text-primary font-medium bg-primary/10 px-2 py-0.5 rounded-full">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                AI working…
+              </span>
+            )}
             <ToolbarButton
               icon={<Maximize2 className="h-3.5 w-3.5" />}
               onClick={() => setIsFocusMode(true)}
@@ -357,6 +393,12 @@ export function Editor() {
                 </motion.div>
               )}
             </AnimatePresence>
+            {isAiLoading && (
+              <span className="flex items-center gap-1.5 text-[11px] text-primary font-medium">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                AI working…
+              </span>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -369,51 +411,6 @@ export function Editor() {
           </div>
         </div>
       )}
-
-      {/* AI Tools Panel */}
-      <AnimatePresence>
-        {showAIPanel && !isFocusMode && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-b border-border/30"
-          >
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary/5 to-transparent">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1.5 text-xs border-primary/20 hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-all"
-                onClick={handleSummarize}
-                disabled={isAiLoading}
-              >
-                <List className="h-3 w-3" />
-                Summarize
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1.5 text-xs border-primary/20 hover:bg-primary/10 hover:text-primary hover:border-primary/40 transition-all"
-                onClick={handleSuggestTags}
-                disabled={isAiLoading}
-              >
-                <Tags className="h-3 w-3" />
-                Auto-Tag
-              </Button>
-              {isAiLoading && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-2 text-xs text-primary ml-2"
-                >
-                  <div className="h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                  <span className="font-medium">Thinking…</span>
-                </motion.div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Editor Area */}
       <div className="flex-1 overflow-auto">
@@ -496,7 +493,7 @@ export function Editor() {
             </div>
           )}
 
-          {/* Content textarea - improved writing experience */}
+          {/* Content textarea */}
           <textarea
             ref={contentRef}
             value={localContent}
@@ -545,6 +542,7 @@ function ToolbarButton({
   active = false,
   primary = false,
   destructive = false,
+  disabled = false,
 }: {
   icon: React.ReactNode;
   onClick: () => void;
@@ -552,11 +550,13 @@ function ToolbarButton({
   active?: boolean;
   primary?: boolean;
   destructive?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Button
       variant="ghost"
       size="icon"
+      disabled={disabled}
       className={`h-7 w-7 transition-all active:scale-90 ${
         active
           ? primary
@@ -564,8 +564,10 @@ function ToolbarButton({
             : 'bg-secondary'
           : destructive
             ? 'text-muted-foreground hover:text-destructive'
-            : 'text-muted-foreground hover:text-foreground'
-      }`}
+            : primary
+              ? 'text-primary/70 hover:text-primary hover:bg-primary/10'
+              : 'text-muted-foreground hover:text-foreground'
+      } disabled:opacity-40 disabled:cursor-not-allowed`}
       onClick={onClick}
       title={title}
     >
