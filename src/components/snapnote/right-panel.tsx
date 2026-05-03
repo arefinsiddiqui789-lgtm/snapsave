@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { useNoteStore } from '@/store/note-store';
-import { getRelativeTime, getTagColorClass, TemporaryDuration, formatDateTime, formatTime } from '@/types/note';
+import { getTagColorClass, TemporaryDuration, formatDateTime } from '@/types/note';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -22,6 +22,8 @@ import {
   List,
   Tags,
   Loader2,
+  Settings2,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -71,6 +73,7 @@ export function RightPanel() {
   const togglePin = useNoteStore((s) => s.togglePin);
   const toggleHighPriority = useNoteStore((s) => s.toggleHighPriority);
   const setTemporary = useNoteStore((s) => s.setTemporary);
+  const setTemporaryCustom = useNoteStore((s) => s.setTemporaryCustom);
   const removeTemporary = useNoteStore((s) => s.removeTemporary);
   const updateNote = useNoteStore((s) => s.updateNote);
   const rightPanelOpen = useNoteStore((s) => s.rightPanelOpen);
@@ -79,6 +82,9 @@ export function RightPanel() {
   const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
 
   const [newTag, setNewTag] = useState('');
+  const [showCustomTimer, setShowCustomTimer] = useState(false);
+  const [customHours, setCustomHours] = useState('');
+  const [customMinutes, setCustomMinutes] = useState('');
 
   const handleAddTag = useCallback(() => {
     if (!activeNoteId || !newTag.trim()) return;
@@ -100,6 +106,45 @@ export function RightPanel() {
       }
     },
     [handleAddTag]
+  );
+
+  const handleCustomTimer = useCallback(() => {
+    if (!activeNoteId) return;
+    const hours = parseInt(customHours || '0', 10) || 0;
+    const minutes = parseInt(customMinutes || '0', 10) || 0;
+    const totalMinutes = hours * 60 + minutes;
+
+    if (totalMinutes <= 0) {
+      toast.error('Enter a valid time (at least 1 minute)');
+      return;
+    }
+    if (totalMinutes > 43200) {
+      toast.error('Maximum duration is 30 days');
+      return;
+    }
+
+    const ms = totalMinutes * 60 * 1000;
+    setTemporaryCustom(activeNoteId, ms);
+
+    // Build friendly label
+    let label = '';
+    if (hours > 0) label += `${hours} hour${hours > 1 ? 's' : ''}`;
+    if (hours > 0 && minutes > 0) label += ' ';
+    if (minutes > 0) label += `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    toast.success(`Self-destruct in ${label}`);
+    setShowCustomTimer(false);
+    setCustomHours('');
+    setCustomMinutes('');
+  }, [activeNoteId, customHours, customMinutes, setTemporaryCustom]);
+
+  const handleCustomTimerKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleCustomTimer();
+      }
+    },
+    [handleCustomTimer]
   );
 
   // AI Summarize
@@ -279,20 +324,84 @@ export function RightPanel() {
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-1.5">
-                {tempDurations.map((d) => (
-                  <button
-                    key={d.key}
-                    onClick={() => {
-                      setTemporary(activeNote.id, d.key);
-                      toast.success(`Self-destruct in ${d.label.toLowerCase()}`);
-                    }}
-                    className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground transition-all active:scale-95"
-                  >
-                    <Clock className="h-2.5 w-2.5" />
-                    {d.short}
-                  </button>
-                ))}
+              <div className="space-y-2">
+                {/* Preset buttons */}
+                <div className="flex gap-1.5">
+                  {tempDurations.map((d) => (
+                    <button
+                      key={d.key}
+                      onClick={() => {
+                        setTemporary(activeNote.id, d.key);
+                        toast.success(`Self-destruct in ${d.label.toLowerCase()}`);
+                      }}
+                      className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground transition-all active:scale-95"
+                    >
+                      <Clock className="h-2.5 w-2.5" />
+                      {d.short}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom timer toggle */}
+                <button
+                  onClick={() => setShowCustomTimer(!showCustomTimer)}
+                  className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all active:scale-95 ${
+                    showCustomTimer
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }`}
+                >
+                  <Settings2 className="h-2.5 w-2.5" />
+                  Custom Time
+                </button>
+
+                {/* Custom time input */}
+                {showCustomTimer && (
+                  <div className="space-y-2 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-semibold block mb-1">
+                          Hours
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="720"
+                          placeholder="0"
+                          value={customHours}
+                          onChange={(e) => setCustomHours(e.target.value.replace(/[^0-9]/g, ''))}
+                          onKeyDown={handleCustomTimerKeyDown}
+                          className="h-7 text-xs bg-background border-border/50 focus:border-primary/40 text-center"
+                        />
+                      </div>
+                      <span className="text-muted-foreground/40 text-xs pb-1.5">:</span>
+                      <div className="flex-1">
+                        <label className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-semibold block mb-1">
+                          Minutes
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="59"
+                          placeholder="30"
+                          value={customMinutes}
+                          onChange={(e) => setCustomMinutes(e.target.value.replace(/[^0-9]/g, ''))}
+                          onKeyDown={handleCustomTimerKeyDown}
+                          className="h-7 text-xs bg-background border-border/50 focus:border-primary/40 text-center"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full h-7 text-[11px] gap-1.5 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary border border-primary/20"
+                      variant="outline"
+                      onClick={handleCustomTimer}
+                    >
+                      <Check className="h-3 w-3" />
+                      Set Timer
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>

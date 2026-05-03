@@ -1,10 +1,3 @@
-export interface NoteVersion {
-  id: string;
-  content: string;
-  title: string;
-  savedAt: number;
-}
-
 export interface Note {
   id: string;
   title: string;
@@ -16,7 +9,6 @@ export interface Note {
   expiresAt: number | null;
   createdAt: number;
   updatedAt: number;
-  versions: NoteVersion[];
 }
 
 export type FilterType = 'all' | 'pinned' | 'high-priority' | 'temporary' | 'tags';
@@ -64,7 +56,6 @@ export function createNewNote(id: string): Note {
     expiresAt: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    versions: [],
   };
 }
 

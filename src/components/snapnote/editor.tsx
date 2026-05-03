@@ -19,9 +19,27 @@ import {
   Tags,
   Save,
   Calendar,
+  Type,
+  AlignLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+
+function getWordCount(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+function getCharCount(text: string): number {
+  return text.length;
+}
+
+function getReadTime(words: number): string {
+  const minutes = Math.ceil(words / 200);
+  if (minutes <= 1) return '< 1 min read';
+  return `${minutes} min read`;
+}
 
 export function Editor() {
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
@@ -50,7 +68,6 @@ export function Editor() {
   // Sync local state when active note changes
   useEffect(() => {
     if (activeNote) {
-      // Only sync if not currently editing (prevents cursor jump)
       if (!isLocalEdit.current) {
         setLocalTitle(activeNote.title);
         setLocalContent(activeNote.content);
@@ -70,7 +87,7 @@ export function Editor() {
       if (!activeNoteId) return;
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = setTimeout(() => {
-        isLocalEdit.current = true; // prevent sync from overwriting
+        isLocalEdit.current = true;
         updateNote(activeNoteId, { [field]: value });
         const now = Date.now();
         setLastSavedAt(now);
@@ -116,7 +133,18 @@ export function Editor() {
       titleRef.current.style.height = 'auto';
       titleRef.current.style.height = titleRef.current.scrollHeight + 'px';
     }
-  }, [activeNoteId]); // only re-run on note switch
+  }, [activeNoteId]);
+
+  // Focus mode: ESC to exit
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFocusMode) {
+        setIsFocusMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFocusMode]);
 
   // Copy note content
   const handleCopy = useCallback(async () => {
@@ -200,6 +228,9 @@ export function Editor() {
     }
   }, [localContent, activeNoteId, setIsAiLoading]);
 
+  const wordCount = getWordCount(localContent);
+  const charCount = getCharCount(localContent);
+
   if (!activeNote) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
@@ -244,67 +275,104 @@ export function Editor() {
   return (
     <div className={`flex-1 flex flex-col h-full bg-background ${isFocusMode ? 'focus-mode' : ''}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40">
-        <div className="flex items-center gap-0.5">
-          <ToolbarButton
-            icon={<Pin className={`h-3.5 w-3.5 ${activeNote.isPinned ? 'text-amber-500 fill-amber-500' : ''}`} />}
-            onClick={() => togglePin(activeNote.id)}
-            title={activeNote.isPinned ? 'Unpin' : 'Pin (Ctrl+Shift+P)'}
-            active={activeNote.isPinned}
-          />
-          <ToolbarButton
-            icon={<Flame className={`h-3.5 w-3.5 ${activeNote.isHighPriority ? 'text-destructive' : ''}`} />}
-            onClick={() => toggleHighPriority(activeNote.id)}
-            title="High priority"
-            active={activeNote.isHighPriority}
-          />
-          <div className="w-px h-4 bg-border/60 mx-1" />
-          <ToolbarButton
-            icon={<Copy className="h-3.5 w-3.5" />}
-            onClick={handleCopy}
-            title="Copy"
-          />
-          <ToolbarButton
-            icon={<Trash2 className="h-3.5 w-3.5" />}
-            onClick={handleDelete}
-            title="Delete"
-            destructive
-          />
-          <div className="w-px h-4 bg-border/60 mx-1" />
-          <ToolbarButton
-            icon={<Sparkles className="h-3.5 w-3.5" />}
-            onClick={() => setShowAIPanel(!showAIPanel)}
-            title="AI Tools"
-            active={showAIPanel}
-            primary
-          />
-        </div>
+      {!isFocusMode && (
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/40">
+          <div className="flex items-center gap-0.5">
+            <ToolbarButton
+              icon={<Pin className={`h-3.5 w-3.5 ${activeNote.isPinned ? 'text-amber-500 fill-amber-500' : ''}`} />}
+              onClick={() => togglePin(activeNote.id)}
+              title={activeNote.isPinned ? 'Unpin' : 'Pin (Ctrl+Shift+P)'}
+              active={activeNote.isPinned}
+            />
+            <ToolbarButton
+              icon={<Flame className={`h-3.5 w-3.5 ${activeNote.isHighPriority ? 'text-destructive' : ''}`} />}
+              onClick={() => toggleHighPriority(activeNote.id)}
+              title="High priority"
+              active={activeNote.isHighPriority}
+            />
+            <div className="w-px h-4 bg-border/60 mx-1" />
+            <ToolbarButton
+              icon={<Copy className="h-3.5 w-3.5" />}
+              onClick={handleCopy}
+              title="Copy"
+            />
+            <ToolbarButton
+              icon={<Trash2 className="h-3.5 w-3.5" />}
+              onClick={handleDelete}
+              title="Delete"
+              destructive
+            />
+            <div className="w-px h-4 bg-border/60 mx-1" />
+            <ToolbarButton
+              icon={<Sparkles className="h-3.5 w-3.5" />}
+              onClick={() => setShowAIPanel(!showAIPanel)}
+              title="AI Tools"
+              active={showAIPanel}
+              primary
+            />
+          </div>
 
-        <div className="flex items-center gap-1.5">
-          <AnimatePresence>
-            {showSaved && lastSavedAt && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, x: 10 }}
-                animate={{ opacity: 1, scale: 1, x: 0 }}
-                exit={{ opacity: 0, scale: 0.9, x: 10 }}
-                className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full"
-              >
-                <Check className="h-3 w-3" />
-                Saved at {formatTime(lastSavedAt)}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <ToolbarButton
-            icon={isFocusMode ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            onClick={() => setIsFocusMode(!isFocusMode)}
-            title={isFocusMode ? 'Exit focus mode' : 'Focus mode'}
-          />
+          <div className="flex items-center gap-1.5">
+            <AnimatePresence>
+              {showSaved && lastSavedAt && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, x: 10 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, x: 10 }}
+                  className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full"
+                >
+                  <Check className="h-3 w-3" />
+                  Saved at {formatTime(lastSavedAt)}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <ToolbarButton
+              icon={<Maximize2 className="h-3.5 w-3.5" />}
+              onClick={() => setIsFocusMode(true)}
+              title="Focus mode"
+            />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Focus mode top bar */}
+      {isFocusMode && (
+        <div className="flex items-center justify-between px-4 py-2 bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground/70 truncate max-w-[200px]">
+              {localTitle || 'Untitled Note'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <AnimatePresence>
+              {showSaved && lastSavedAt && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium"
+                >
+                  <Check className="h-3 w-3" />
+                  Saved
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={() => setIsFocusMode(false)}
+            >
+              <Minimize2 className="h-3 w-3" />
+              Exit Focus
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* AI Tools Panel */}
       <AnimatePresence>
-        {showAIPanel && (
+        {showAIPanel && !isFocusMode && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -349,30 +417,39 @@ export function Editor() {
 
       {/* Editor Area */}
       <div className="flex-1 overflow-auto">
-        <div className="max-w-3xl mx-auto px-5 py-6 md:px-10 md:py-8">
-          {/* Title - clearly editable */}
+        <div className={`mx-auto px-5 py-6 md:px-10 md:py-8 ${isFocusMode ? 'max-w-2xl' : 'max-w-3xl'}`}>
+          {/* Title */}
           <textarea
             ref={titleRef}
             value={localTitle}
             onChange={handleTitleChange}
-            placeholder="Enter note title…"
-            className="w-full text-2xl md:text-3xl font-bold bg-transparent border-none outline-none resize-none font-[family-name:var(--font-title)] text-foreground placeholder:text-muted-foreground/40 leading-tight overflow-hidden"
+            placeholder="Note title…"
+            className="w-full text-2xl md:text-3xl font-bold bg-transparent border-none outline-none resize-none font-[family-name:var(--font-title)] text-foreground placeholder:text-muted-foreground/30 leading-tight overflow-hidden caret-primary"
             rows={1}
             style={{ height: 'auto' }}
           />
 
-          {/* Date & Time line */}
-          <div className="flex items-center gap-3 mt-2 mb-4 text-[12px] text-muted-foreground/60">
+          {/* Meta line - date, time, word count */}
+          <div className="flex items-center gap-3 mt-2 mb-5 text-[12px] text-muted-foreground/50">
             <span className="inline-flex items-center gap-1.5">
               <Calendar className="h-3 w-3" />
-              Created {formatDateTime(activeNote.createdAt)}
+              {formatDateTime(activeNote.createdAt)}
             </span>
             {activeNote.updatedAt !== activeNote.createdAt && (
               <>
-                <span className="text-muted-foreground/30">·</span>
+                <span className="text-muted-foreground/25">·</span>
                 <span className="inline-flex items-center gap-1.5">
                   <Save className="h-3 w-3" />
-                  Last edited {formatDate(activeNote.updatedAt)} at {formatTime(activeNote.updatedAt)}
+                  Edited {formatDate(activeNote.updatedAt)} at {formatTime(activeNote.updatedAt)}
+                </span>
+              </>
+            )}
+            {wordCount > 0 && (
+              <>
+                <span className="text-muted-foreground/25">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Type className="h-3 w-3" />
+                  {wordCount} {wordCount === 1 ? 'word' : 'words'}
                 </span>
               </>
             )}
@@ -399,32 +476,61 @@ export function Editor() {
           )}
 
           {/* Status indicators */}
-          <div className="flex items-center gap-2 mb-4">
-            {activeNote.isPinned && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
-                <Pin className="h-2.5 w-2.5" /> Pinned
-              </span>
-            )}
-            {activeNote.isHighPriority && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
-                <Flame className="h-2.5 w-2.5" /> High Priority
-              </span>
-            )}
-            {activeNote.isTemporary && activeNote.expiresAt && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-full countdown-pulse">
-                <Clock className="h-2.5 w-2.5" /> Self-destructing
-              </span>
-            )}
-          </div>
+          {!isFocusMode && (
+            <div className="flex items-center gap-2 mb-4">
+              {activeNote.isPinned && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
+                  <Pin className="h-2.5 w-2.5" /> Pinned
+                </span>
+              )}
+              {activeNote.isHighPriority && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                  <Flame className="h-2.5 w-2.5" /> High Priority
+                </span>
+              )}
+              {activeNote.isTemporary && activeNote.expiresAt && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-full countdown-pulse">
+                  <Clock className="h-2.5 w-2.5" /> Self-destructing
+                </span>
+              )}
+            </div>
+          )}
 
-          {/* Content */}
+          {/* Content textarea - improved writing experience */}
           <textarea
             ref={contentRef}
             value={localContent}
             onChange={handleContentChange}
-            placeholder="Start writing your note…"
-            className="editor-content w-full min-h-[50vh] bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed text-foreground/85 placeholder:text-muted-foreground/35 font-[family-name:var(--font-body)] focus:placeholder:text-muted-foreground/20 transition-colors"
+            placeholder="Start writing… express your thoughts freely ✨"
+            className="w-full min-h-[50vh] bg-transparent border-none outline-none resize-none text-[15px] md:text-[16px] leading-[1.8] text-foreground/85 placeholder:text-muted-foreground/25 font-[family-name:var(--font-body)] focus:placeholder:text-muted-foreground/15 transition-colors caret-primary selection:bg-primary/15"
           />
+        </div>
+      </div>
+
+      {/* Bottom status bar */}
+      <div className="flex items-center justify-between px-4 py-1.5 border-t border-border/30 text-[10px] text-muted-foreground/40">
+        <div className="flex items-center gap-3">
+          {wordCount > 0 && (
+            <>
+              <span className="inline-flex items-center gap-1">
+                <AlignLeft className="h-2.5 w-2.5" />
+                {wordCount} words
+              </span>
+              <span>{charCount} chars</span>
+              <span>{getReadTime(wordCount)}</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {lastSavedAt && (
+            <span className="inline-flex items-center gap-1">
+              <Check className="h-2.5 w-2.5" />
+              Auto-saved
+            </span>
+          )}
+          {isFocusMode && (
+            <span className="text-primary/50">Focus mode · ESC to exit</span>
+          )}
         </div>
       </div>
     </div>

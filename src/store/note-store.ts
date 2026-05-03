@@ -6,7 +6,6 @@ import {
   createNewNote,
   TEMPORARY_DURATIONS,
   TemporaryDuration,
-  NoteVersion,
 } from '@/types/note';
 
 interface NoteState {
@@ -31,10 +30,10 @@ interface NoteState {
   togglePin: (id: string) => void;
   toggleHighPriority: (id: string) => void;
   setTemporary: (id: string, duration: TemporaryDuration) => void;
+  setTemporaryCustom: (id: string, ms: number) => void;
   removeTemporary: (id: string) => void;
   addTag: (id: string, tag: string) => void;
   removeTag: (id: string, tag: string) => void;
-  restoreVersion: (noteId: string, versionId: string) => void;
   cleanupExpiredNotes: () => void;
   setSidebarOpen: (open: boolean) => void;
   setRightPanelOpen: (open: boolean) => void;
@@ -51,19 +50,6 @@ function generateId(): string {
   noteIdCounter++;
   return `note_${Date.now()}_${noteIdCounter}_${Math.random().toString(36).slice(2, 8)}`;
 }
-
-function saveVersion(note: Note): NoteVersion {
-  return {
-    id: `ver_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    content: note.content,
-    title: note.title,
-    savedAt: Date.now(),
-  };
-}
-
-// Track last version save time per note to avoid saving too frequently
-const lastVersionSaveTime: Record<string, number> = {};
-const VERSION_SAVE_INTERVAL = 10000; // Only save version every 10 seconds minimum
 
 export const useNoteStore = create<NoteState>()(
   persist(
@@ -110,53 +96,16 @@ export const useNoteStore = create<NoteState>()(
         set((state) => ({
           notes: state.notes.map((note) => {
             if (note.id !== id) return note;
-
-            // Only save version if content/title actually changed AND enough time has passed
-            const contentChanged =
-              (updates.content !== undefined && updates.content !== note.content) ||
-              (updates.title !== undefined && updates.title !== note.title);
-
-            const now = Date.now();
-            const lastSave = lastVersionSaveTime[id] || 0;
-            const shouldSaveVersion = contentChanged && (now - lastSave >= VERSION_SAVE_INTERVAL);
-
-            let versions = note.versions;
-            if (shouldSaveVersion) {
-              versions = [...note.versions.slice(-19), saveVersion(note)];
-              lastVersionSaveTime[id] = now;
-            }
-
             return {
               ...note,
               ...updates,
-              updatedAt: now,
-              versions,
+              updatedAt: Date.now(),
             };
           }),
         }));
       },
 
       setActiveNote: (id) => {
-        // Save a version of the current note before switching (if it has content)
-        const state = get();
-        if (state.activeNoteId) {
-          const currentNote = state.notes.find((n) => n.id === state.activeNoteId);
-          if (currentNote && (currentNote.content.trim() || currentNote.title.trim())) {
-            const now = Date.now();
-            const lastSave = lastVersionSaveTime[state.activeNoteId] || 0;
-            if (now - lastSave >= 5000) { // 5s minimum between saves on note switch
-              const version = saveVersion(currentNote);
-              set((s) => ({
-                notes: s.notes.map((n) =>
-                  n.id === state.activeNoteId
-                    ? { ...n, versions: [...n.versions.slice(-19), version] }
-                    : n
-                ),
-              }));
-              lastVersionSaveTime[state.activeNoteId] = now;
-            }
-          }
-        }
         set({ activeNoteId: id });
       },
 
@@ -206,6 +155,22 @@ export const useNoteStore = create<NoteState>()(
         }));
       },
 
+      setTemporaryCustom: (id, ms) => {
+        if (ms <= 0) return;
+        set((state) => ({
+          notes: state.notes.map((note) =>
+            note.id === id
+              ? {
+                  ...note,
+                  isTemporary: true,
+                  expiresAt: Date.now() + ms,
+                  updatedAt: Date.now(),
+                }
+              : note
+          ),
+        }));
+      },
+
       removeTemporary: (id) => {
         set((state) => ({
           notes: state.notes.map((note) =>
@@ -233,23 +198,6 @@ export const useNoteStore = create<NoteState>()(
               ? { ...note, tags: note.tags.filter((t) => t !== tag), updatedAt: Date.now() }
               : note
           ),
-        }));
-      },
-
-      restoreVersion: (noteId, versionId) => {
-        set((state) => ({
-          notes: state.notes.map((note) => {
-            if (note.id !== noteId) return note;
-            const version = note.versions.find((v) => v.id === versionId);
-            if (!version) return note;
-            return {
-              ...note,
-              content: version.content,
-              title: version.title,
-              versions: [...note.versions.slice(-19), saveVersion(note)],
-              updatedAt: Date.now(),
-            };
-          }),
         }));
       },
 
