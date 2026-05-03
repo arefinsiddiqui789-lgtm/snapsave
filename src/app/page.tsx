@@ -2,10 +2,12 @@
 
 import { useEffect, useCallback, useState } from 'react';
 import { useNoteStore } from '@/store/note-store';
+import { useAuthStore } from '@/store/auth-store';
 import { Sidebar } from '@/components/snapnote/sidebar';
 import { Editor } from '@/components/snapnote/editor';
 import { RightPanel } from '@/components/snapnote/right-panel';
 import { CreateNoteDialog } from '@/components/snapnote/create-note-dialog';
+import { AuthScreen } from '@/components/snapnote/auth-screen';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -18,8 +20,10 @@ import {
   PanelLeft,
   PanelRight,
   Plus,
+  LogOut,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
@@ -27,10 +31,20 @@ export default function Home() {
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
   const notes = useNoteStore((s) => s.notes);
   const cleanupExpiredNotes = useNoteStore((s) => s.cleanupExpiredNotes);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
+  const [authReady, setAuthReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileRightPanelOpen, setMobileRightPanelOpen] = useState(false);
+
+  // Wait for auth store to hydrate from localStorage
+  useEffect(() => {
+    const timer = setTimeout(() => setAuthReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Check mobile
   useEffect(() => {
@@ -73,6 +87,20 @@ export default function Home() {
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   }, [theme, setTheme]);
+
+  // Show loading while auth hydrates
+  if (!authReady) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Show auth screen if not authenticated
+  if (!isAuthenticated) {
+    return <AuthScreen />;
+  }
 
   // Mobile layout
   if (isMobile) {
@@ -128,6 +156,18 @@ export default function Home() {
                 <Moon className="h-4 w-4" />
               )}
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={() => {
+                logout();
+                toast.success('Logged out');
+              }}
+              title="Log out"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -152,17 +192,35 @@ export default function Home() {
       <div className="flex-1 flex flex-col relative overflow-hidden">
         {/* Top bar with theme toggle */}
         <div className="absolute top-2 right-3 z-10 flex items-center gap-1">
+          {authUser && (
+            <span className="text-[11px] text-muted-foreground mr-1 hidden sm:inline">
+              {authUser.username}
+            </span>
+          )}
           <Button
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-foreground"
             onClick={toggleTheme}
+            title="Toggle theme"
           >
             {theme === 'dark' ? (
               <Sun className="h-3.5 w-3.5" />
             ) : (
               <Moon className="h-3.5 w-3.5" />
             )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            onClick={() => {
+              logout();
+              toast.success('Logged out');
+            }}
+            title="Log out"
+          >
+            <LogOut className="h-3.5 w-3.5" />
           </Button>
         </div>
         <Editor />
