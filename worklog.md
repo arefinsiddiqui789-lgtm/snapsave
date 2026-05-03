@@ -74,3 +74,22 @@ Stage Summary:
 - Notes can be freely edited in the editor after creation (title and content both editable)
 - Dialog resets form fields each time it opens
 - All creation triggers (button, Ctrl+N, welcome screen) open the dialog
+
+---
+Task ID: 4
+Agent: Main
+Task: Fix sidebar showing duplicate content — show only Note Name and Note Details preview
+
+Work Log:
+- Updated `getNoteTitle()` to no longer fall back to content first line — always shows the actual title or "Untitled Note"
+- Updated `getNotePreview()` to accept `Note` object instead of raw content string
+- `getNotePreview()` now strips out title text from content preview to avoid duplication
+- Reduced preview max length from 80 to 60 chars for cleaner sidebar display
+- Updated sidebar to use new `getNotePreview(note)` signature
+- Made sidebar title "semibold" for clearer visual hierarchy (Note Name vs Note Details)
+- All lint checks pass
+
+Stage Summary:
+- Sidebar now cleanly shows: Note Name (bold) → Note Details (brief preview, no duplication)
+- Content preview strips the title text if it appears at the start of content
+- No more duplicate/redundant text between the note name and the details preview

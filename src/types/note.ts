@@ -68,15 +68,24 @@ export function createNewNote(id: string): Note {
   };
 }
 
-export function getNotePreview(content: string, maxLength: number = 80): string {
-  const stripped = content.replace(/[#*_~`>\-\[\]()]/g, '').trim();
-  return stripped.length > maxLength ? stripped.slice(0, maxLength) + '...' : stripped;
+export function getNotePreview(note: Note, maxLength: number = 60): string {
+  let content = note.content || '';
+  // Strip markdown chars
+  content = content.replace(/[#*_~`>\-\[\]()]/g, '').trim();
+  // If content starts with the title text, strip it to avoid duplication
+  if (note.title.trim()) {
+    const titleTrimmed = note.title.trim().replace(/[#*_~`>\-\[\]()]/g, '');
+    if (content.startsWith(titleTrimmed)) {
+      content = content.slice(titleTrimmed.length).trim();
+    }
+  }
+  if (!content) return '';
+  return content.length > maxLength ? content.slice(0, maxLength) + '…' : content;
 }
 
 export function getNoteTitle(note: Note): string {
-  if (note.title.trim()) return note.title;
-  const firstLine = note.content.split('\n')[0].replace(/[#*_~`>\-\[\]()]/g, '').trim();
-  return firstLine || 'Untitled Note';
+  if (note.title.trim()) return note.title.trim();
+  return 'Untitled Note';
 }
 
 export function getRelativeTime(timestamp: number): string {

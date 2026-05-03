@@ -245,7 +245,7 @@ export function Sidebar() {
               </div>
               {dateNotes.map((note) => {
                 const title = getNoteTitle(note);
-                const preview = getNotePreview(note.content);
+                const preview = getNotePreview(note);
                 const isActive = note.id === activeNoteId;
 
                 return (
@@ -260,6 +260,7 @@ export function Sidebar() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
+                        {/* Note Name row */}
                         <div className="flex items-center gap-1.5">
                           {note.isPinned && (
                             <Pin className="h-2.5 w-2.5 text-amber-500 shrink-0 fill-amber-500" />
@@ -270,12 +271,13 @@ export function Sidebar() {
                           {note.isTemporary && (
                             <Clock className="h-2.5 w-2.5 text-orange-500 shrink-0 countdown-pulse" />
                           )}
-                          <span className={`text-[13px] font-medium truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                          <span className={`text-[13px] font-semibold truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
                             {title}
                           </span>
                         </div>
+                        {/* Note Details preview */}
                         {preview && (
-                          <p className="text-[11px] text-muted-foreground/70 mt-0.5 line-clamp-1 pl-0">
+                          <p className="text-[11px] text-muted-foreground/60 mt-0.5 line-clamp-1 pl-0">
                             {preview}
                           </p>
                         )}
