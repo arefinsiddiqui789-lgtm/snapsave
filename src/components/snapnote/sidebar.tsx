@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
+import { useTheme } from 'next-themes';
 import { useNoteStore } from '@/store/note-store';
+import { useThemeStore, COLOR_THEMES } from '@/store/theme-store';
 import { Note, getNoteTitle, getRelativeTime, getTagColorClass, groupNotesByDate, formatTime } from '@/types/note';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,6 +17,9 @@ import {
   Plus,
   PanelLeftClose,
   PanelLeft,
+  Sun,
+  Moon,
+  Palette,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -26,6 +31,8 @@ export function Sidebar() {
   const sidebarOpen = useNoteStore((s) => s.sidebarOpen);
   const setSidebarOpen = useNoteStore((s) => s.setSidebarOpen);
   const notes = useNoteStore((s) => s.notes);
+  const { theme, setTheme } = useTheme();
+  const { colorTheme, setColorTheme } = useThemeStore();
 
   const filteredNotes = useMemo(() => {
     let filtered: Note[] = [...notes];
@@ -103,6 +110,27 @@ export function Sidebar() {
         >
           <Plus className="h-4 w-4" />
         </Button>
+        <div className="flex-1" />
+        <div className="w-5 h-px bg-border/60 my-2" />
+        {/* Mini theme dots when sidebar collapsed */}
+        <div className="flex flex-col gap-1.5 items-center">
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="h-6 w-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all"
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          >
+            {theme === 'dark' ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+          </button>
+          {COLOR_THEMES.slice(0, 5).map((t) => (
+            <button
+              key={t.name}
+              onClick={() => setColorTheme(t.name)}
+              title={t.label}
+              className={`h-4 w-4 rounded-full border transition-all ${colorTheme === t.name ? 'border-foreground scale-110' : 'border-transparent hover:scale-110'}`}
+              style={{ backgroundColor: t.color }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -249,7 +277,42 @@ export function Sidebar() {
           <Plus className="h-4 w-4" />
           New Note
         </Button>
-        <div className="text-center mt-2.5">
+
+        {/* Color theme picker — always visible */}
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Palette className="h-3 w-3 text-muted-foreground" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Theme</span>
+            </div>
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="h-5 w-5 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all"
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {COLOR_THEMES.map((t) => (
+              <button
+                key={t.name}
+                onClick={() => setColorTheme(t.name)}
+                title={t.label}
+                className={`
+                  h-5 w-5 rounded-full border-2 transition-all active:scale-90
+                  ${colorTheme === t.name
+                    ? 'border-foreground scale-110 ring-1 ring-foreground/20'
+                    : 'border-transparent hover:border-muted-foreground/30 hover:scale-105'
+                  }
+                `}
+                style={{ backgroundColor: t.color }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="text-center mt-3">
           <p className="text-[10px] font-medium text-foreground">
             Developed By Arefin Siddiqui
           </p>
