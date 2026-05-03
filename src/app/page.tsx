@@ -8,7 +8,6 @@ import { Editor } from '@/components/snapnote/editor';
 import { RightPanel } from '@/components/snapnote/right-panel';
 import { CreateNoteDialog } from '@/components/snapnote/create-note-dialog';
 import { AuthScreen } from '@/components/snapnote/auth-screen';
-import { ThemeSwitcher } from '@/components/snapnote/theme-switcher';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -16,14 +15,18 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import {
+  Moon,
+  Sun,
   PanelLeft,
   PanelRight,
   Plus,
   LogOut,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
 export default function Home() {
+  const { theme, setTheme } = useTheme();
   const setCreateNoteDialogOpen = useNoteStore((s) => s.setCreateNoteDialogOpen);
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
   const notes = useNoteStore((s) => s.notes);
@@ -79,6 +82,10 @@ export default function Home() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [setCreateNoteDialogOpen, activeNoteId]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [theme, setTheme]);
 
   // Show loading while auth hydrates
   if (!authReady) {
@@ -136,7 +143,18 @@ export default function Home() {
                 <RightPanel />
               </SheetContent>
             </Sheet>
-            <ThemeSwitcher />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={toggleTheme}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -178,7 +196,19 @@ export default function Home() {
               {authUser.username}
             </span>
           )}
-          <ThemeSwitcher />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            onClick={toggleTheme}
+            title="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-3.5 w-3.5" />
+            ) : (
+              <Moon className="h-3.5 w-3.5" />
+            )}
+          </Button>
           <Button
             variant="ghost"
             size="icon"
