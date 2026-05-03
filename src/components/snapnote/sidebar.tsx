@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNoteStore } from '@/store/note-store';
-import { getNoteTitle, getRelativeTime, getTagColorClass, groupNotesByDate, formatTime } from '@/types/note';
+import { Note, getNoteTitle, getRelativeTime, getTagColorClass, groupNotesByDate, formatTime } from '@/types/note';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -31,16 +31,71 @@ export function Sidebar() {
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
   const setActiveNote = useNoteStore((s) => s.setActiveNote);
   const setCreateNoteDialogOpen = useNoteStore((s) => s.setCreateNoteDialogOpen);
-  const getFilteredNotes = useNoteStore((s) => s.getFilteredNotes);
-  const getAllTags = useNoteStore((s) => s.getAllTags);
-  const notes = useNoteStore((s) => s.notes);
   const sidebarOpen = useNoteStore((s) => s.sidebarOpen);
   const setSidebarOpen = useNoteStore((s) => s.setSidebarOpen);
 
-  const searchRef = useRef<HTMLInputElement>(null);
-  const filteredNotes = useMemo(() => getFilteredNotes(), [getFilteredNotes, notes, searchQuery, activeFilter, selectedTag]);
-  const allTags = useMemo(() => getAllTags(), [getAllTags, notes]);
+  // Subscribe to raw data directly
+  const notes = useNoteStore((s) => s.notes);
+
+  // Compute filtered notes directly — no store getter, so reactivity is guaranteed
+  const filteredNotes = useMemo(() => {
+    let filtered: Note[] = [...notes];
+
+    // Clean up expired notes
+    const now = Date.now();
+    filtered = filtered.filter(
+      (note) => !note.isTemporary || !note.expiresAt || note.expiresAt > now
+    );
+
+    // Apply search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (note) =>
+          note.title.toLowerCase().includes(q) ||
+          note.content.toLowerCase().includes(q) ||
+          note.tags.some((t) => t.toLowerCase().includes(q))
+      );
+    }
+
+    // Apply filter
+    switch (activeFilter) {
+      case 'pinned':
+        filtered = filtered.filter((n) => n.isPinned);
+        break;
+      case 'high-priority':
+        filtered = filtered.filter((n) => n.isHighPriority);
+        break;
+      case 'temporary':
+        filtered = filtered.filter((n) => n.isTemporary);
+        break;
+      case 'tags':
+        if (selectedTag) {
+          filtered = filtered.filter((n) => n.tags.includes(selectedTag));
+        }
+        break;
+    }
+
+    // Sort: pinned first, then high priority, then by updatedAt
+    filtered.sort((a, b) => {
+      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+      if (a.isHighPriority !== b.isHighPriority) return a.isHighPriority ? -1 : 1;
+      return b.updatedAt - a.updatedAt;
+    });
+
+    return filtered;
+  }, [notes, searchQuery, activeFilter, selectedTag]);
+
+  // Compute all unique tags
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    notes.forEach((note) => note.tags.forEach((tag) => tags.add(tag)));
+    return Array.from(tags).sort();
+  }, [notes]);
+
   const groupedNotes = useMemo(() => groupNotesByDate(filteredNotes), [filteredNotes]);
+
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

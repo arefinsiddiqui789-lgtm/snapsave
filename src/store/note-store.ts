@@ -284,10 +284,23 @@ export const useNoteStore = create<NoteState>()(
     }),
     {
       name: 'snapnote-pro-storage',
+      version: 1,
       partialize: (state) => ({
         notes: state.notes,
         activeNoteId: state.activeNoteId,
       }),
+      migrate: (persisted: Record<string, unknown>, version: number) => {
+        if (version === 0) {
+          // Remove old `versions` field from notes (v0 → v1)
+          if (Array.isArray(persisted.notes)) {
+            persisted.notes = persisted.notes.map((note: Record<string, unknown>) => {
+              const { versions: _v, ...rest } = note;
+              return rest;
+            });
+          }
+        }
+        return persisted as NoteState;
+      },
     }
   )
 );
