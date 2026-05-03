@@ -249,6 +249,14 @@ export function Sidebar() {
           <Plus className="h-4 w-4" />
           New Note
         </Button>
+        <div className="text-center mt-2.5">
+          <p className="text-[10px] font-medium text-foreground">
+            Developed By Arefin Siddiqui
+          </p>
+          <p className="text-[9px] text-muted-foreground mt-0.5">
+            Studying in CSE at IUB
+          </p>
+        </div>
       </div>
     </div>
   );
