@@ -86,9 +86,6 @@ export function AuthScreen() {
         >
           {/* Brand */}
           <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-5">
-              <span className="text-2xl">📝</span>
-            </div>
             <h1 className="text-2xl font-bold font-[family-name:var(--font-title)] text-foreground tracking-tight">
               SnapNote Pro
             </h1>
