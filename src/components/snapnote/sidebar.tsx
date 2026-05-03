@@ -12,22 +12,16 @@ import {
   Pin,
   Flame,
   Clock,
-  Tag,
   FileText,
   Plus,
   PanelLeftClose,
   PanelLeft,
   Sparkles,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
 
 export function Sidebar() {
   const searchQuery = useNoteStore((s) => s.searchQuery);
   const setSearchQuery = useNoteStore((s) => s.setSearchQuery);
-  const activeFilter = useNoteStore((s) => s.activeFilter);
-  const setActiveFilter = useNoteStore((s) => s.setActiveFilter);
-  const selectedTag = useNoteStore((s) => s.selectedTag);
-  const setSelectedTag = useNoteStore((s) => s.setSelectedTag);
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
   const setActiveNote = useNoteStore((s) => s.setActiveNote);
   const setCreateNoteDialogOpen = useNoteStore((s) => s.setCreateNoteDialogOpen);
@@ -37,7 +31,7 @@ export function Sidebar() {
   // Subscribe to raw data directly
   const notes = useNoteStore((s) => s.notes);
 
-  // Compute filtered notes directly — no store getter, so reactivity is guaranteed
+  // Compute filtered notes — just search + expired cleanup + sort
   const filteredNotes = useMemo(() => {
     let filtered: Note[] = [...notes];
 
@@ -58,24 +52,6 @@ export function Sidebar() {
       );
     }
 
-    // Apply filter
-    switch (activeFilter) {
-      case 'pinned':
-        filtered = filtered.filter((n) => n.isPinned);
-        break;
-      case 'high-priority':
-        filtered = filtered.filter((n) => n.isHighPriority);
-        break;
-      case 'temporary':
-        filtered = filtered.filter((n) => n.isTemporary);
-        break;
-      case 'tags':
-        if (selectedTag) {
-          filtered = filtered.filter((n) => n.tags.includes(selectedTag));
-        }
-        break;
-    }
-
     // Sort: pinned first, then high priority, then by updatedAt
     filtered.sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
@@ -84,14 +60,7 @@ export function Sidebar() {
     });
 
     return filtered;
-  }, [notes, searchQuery, activeFilter, selectedTag]);
-
-  // Compute all unique tags
-  const allTags = useMemo(() => {
-    const tags = new Set<string>();
-    notes.forEach((note) => note.tags.forEach((tag) => tags.add(tag)));
-    return Array.from(tags).sort();
-  }, [notes]);
+  }, [notes, searchQuery]);
 
   const groupedNotes = useMemo(() => groupNotesByDate(filteredNotes), [filteredNotes]);
 
@@ -125,14 +94,6 @@ export function Sidebar() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
-
-  const filters: { key: typeof activeFilter; label: string; icon: React.ReactNode; count?: number }[] = useMemo(() => [
-    { key: 'all', label: 'All', icon: <FileText className="h-3 w-3" />, count: notes.length },
-    { key: 'pinned', label: 'Pinned', icon: <Pin className="h-3 w-3" />, count: notes.filter(n => n.isPinned).length },
-    { key: 'high-priority', label: 'Priority', icon: <Flame className="h-3 w-3" />, count: notes.filter(n => n.isHighPriority).length },
-    { key: 'temporary', label: 'Temp', icon: <Clock className="h-3 w-3" />, count: notes.filter(n => n.isTemporary).length },
-    { key: 'tags', label: 'Tags', icon: <Tag className="h-3 w-3" /> },
-  ], [notes]);
 
   if (!sidebarOpen) {
     return (
@@ -212,67 +173,6 @@ export function Sidebar() {
           )}
         </div>
       </div>
-
-      {/* Filters */}
-      <div className="px-3 pb-2">
-        <div className="flex gap-1 flex-wrap">
-          {filters.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => {
-                setActiveFilter(f.key);
-                if (f.key !== 'tags') setSelectedTag(null);
-              }}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all active:scale-95 ${
-                activeFilter === f.key
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground'
-              }`}
-            >
-              {f.icon}
-              <span>{f.label}</span>
-              {f.count !== undefined && f.count > 0 && (
-                <span className={`ml-0.5 text-[9px] ${activeFilter === f.key ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
-                  {f.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tag filter */}
-      <AnimatePresence>
-        {activeFilter === 'tags' && allTags.length > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-2 flex gap-1.5 flex-wrap">
-              {allTags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all active:scale-95 ${
-                    selectedTag === tag
-                      ? getTagColorClass(tag)
-                      : 'bg-secondary/40 text-muted-foreground hover:bg-secondary'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-        {activeFilter === 'tags' && allTags.length === 0 && (
-          <div className="px-3 pb-2">
-            <p className="text-[11px] text-muted-foreground/50">No tags yet. Add tags to your notes.</p>
-          </div>
-        )}
-      </AnimatePresence>
 
       <Separator className="mx-3" />
 
