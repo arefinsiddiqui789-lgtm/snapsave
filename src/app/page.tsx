@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useNoteStore } from '@/store/note-store';
 import { useAuthStore } from '@/store/auth-store';
 import { Sidebar } from '@/components/snapnote/sidebar';
@@ -14,17 +14,28 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { Note, getNoteTitle, getRelativeTime, getTagColorClass, groupNotesByDate, TemporaryDuration, formatDateTime } from '@/types/note';
 import {
   Moon,
   Sun,
-  PanelLeft,
-  PanelRight,
   Plus,
   LogOut,
   FileText,
   PenLine,
   Settings2,
   Search,
+  Pin,
+  Flame,
+  Clock,
+  Tag,
+  X,
+  Calendar,
+  Sparkles,
+  Timer,
+  List,
+  Tags,
+  Loader2,
+  Check,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
@@ -89,12 +100,10 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handler);
   }, [setCreateNoteDialogOpen, activeNoteId]);
 
-  // When a note is selected, auto-switch to editor tab on mobile
-  useEffect(() => {
-    if (isMobile && activeNoteId && mobileTab === 'notes') {
-      setMobileTab('editor');
-    }
-  }, [activeNoteId, isMobile, mobileTab]);
+  const handleMobileNoteSelect = useCallback((id: string) => {
+    useNoteStore.getState().setActiveNote(id);
+    setMobileTab('editor');
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -146,7 +155,7 @@ export default function Home() {
                 transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                 className="absolute inset-0"
               >
-                <MobileNotesList />
+                <MobileNotesList onNoteSelect={handleMobileNoteSelect} />
               </motion.div>
             )}
 
@@ -302,13 +311,11 @@ export default function Home() {
 
 // ========== Mobile Sub-Components ==========
 
-function MobileNotesList() {
+function MobileNotesList({ onNoteSelect }: { onNoteSelect: (id: string) => void }) {
   const searchQuery = useNoteStore((s) => s.searchQuery);
   const setSearchQuery = useNoteStore((s) => s.setSearchQuery);
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
-  const setActiveNote = useNoteStore((s) => s.setActiveNote);
   const notes = useNoteStore((s) => s.notes);
-  const setCreateNoteDialogOpen = useNoteStore((s) => s.setCreateNoteDialogOpen);
 
   const filteredNotes = useMemo(() => {
     let filtered: Note[] = [...notes];
@@ -386,7 +393,7 @@ function MobileNotesList() {
               return (
                 <button
                   key={note.id}
-                  onClick={() => setActiveNote(note.id)}
+                  onClick={() => onNoteSelect(note.id)}
                   className={`w-full text-left px-4 py-3.5 rounded-2xl mb-2 transition-all active:scale-[0.98] ${
                     isActive
                       ? 'bg-primary/10 border border-primary/20'
@@ -813,25 +820,3 @@ function CountdownTimer({ expiresAt }: { expiresAt: number }) {
     </span>
   );
 }
-
-// Re-export types/utils needed by mobile components
-import { useMemo } from 'react';
-import { Note, getNoteTitle, getRelativeTime, getTagColorClass, groupNotesByDate, TemporaryDuration, formatDateTime } from '@/types/note';
-import {
-  Pin,
-  Flame,
-  Clock,
-  FileText,
-  Tag,
-  Plus,
-  X,
-  Calendar,
-  Sparkles,
-  Timer,
-  List,
-  Tags,
-  Loader2,
-  Settings2,
-  Check,
-  LogOut,
-} from 'lucide-react';
