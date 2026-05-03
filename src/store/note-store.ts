@@ -7,7 +7,6 @@ import {
   TEMPORARY_DURATIONS,
   TemporaryDuration,
 } from '@/types/note';
-import { sanitizeNoteContent, sanitizeTag } from '@/lib/security';
 
 interface NoteState {
   notes: Note[];
@@ -69,8 +68,8 @@ export const useNoteStore = create<NoteState>()(
         const id = generateId();
         const newNote = {
           ...createNewNote(id),
-          title: sanitizeNoteContent(title || ''),
-          content: sanitizeNoteContent(content || ''),
+          title: title || '',
+          content: content || '',
         };
         set((state) => ({
           notes: [newNote, ...state.notes],
@@ -94,15 +93,12 @@ export const useNoteStore = create<NoteState>()(
       },
 
       updateNote: (id, updates) => {
-        const sanitizedUpdates: Partial<Note> = { ...updates };
-        if (updates.title !== undefined) sanitizedUpdates.title = sanitizeNoteContent(updates.title);
-        if (updates.content !== undefined) sanitizedUpdates.content = sanitizeNoteContent(updates.content);
         set((state) => ({
           notes: state.notes.map((note) => {
             if (note.id !== id) return note;
             return {
               ...note,
-              ...sanitizedUpdates,
+              ...updates,
               updatedAt: Date.now(),
             };
           }),
@@ -186,12 +182,10 @@ export const useNoteStore = create<NoteState>()(
       },
 
       addTag: (id, tag) => {
-        const cleanTag = sanitizeTag(tag);
-        if (!cleanTag) return;
         set((state) => ({
           notes: state.notes.map((note) =>
-            note.id === id && !note.tags.includes(cleanTag)
-              ? { ...note, tags: [...note.tags, cleanTag], updatedAt: Date.now() }
+            note.id === id && !note.tags.includes(tag)
+              ? { ...note, tags: [...note.tags, tag], updatedAt: Date.now() }
               : note
           ),
         }));
@@ -290,7 +284,7 @@ export const useNoteStore = create<NoteState>()(
     }),
     {
       name: 'snapnote-pro-storage',
-      version: 2,
+      version: 1,
       partialize: (state) => ({
         notes: state.notes,
         activeNoteId: state.activeNoteId,

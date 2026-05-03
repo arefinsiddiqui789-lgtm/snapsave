@@ -5,16 +5,9 @@ import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, ArrowRight, LogIn, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { sanitizeUsername } from '@/lib/security';
-
-function formatLockoutTime(ms: number): string {
-  const minutes = Math.ceil(ms / 60000);
-  if (minutes < 1) return 'less than a minute';
-  return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-}
 
 export function AuthScreen() {
   const user = useAuthStore((s) => s.user);
@@ -29,20 +22,19 @@ export function AuthScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
+    (e: React.FormEvent) => {
       e.preventDefault();
 
       const trimmedUsername = username.trim();
-      const trimmedPassword = password;
+      const trimmedPassword = password.trim();
 
       if (!trimmedUsername) {
         toast.error('Please enter a username');
         return;
       }
 
-      const cleanUsername = sanitizeUsername(trimmedUsername);
-      if (cleanUsername.length < 2) {
-        toast.error('Username must be at least 2 characters (letters, numbers, hyphens, underscores only)');
+      if (trimmedUsername.length < 2) {
+        toast.error('Username must be at least 2 characters');
         return;
       }
 
@@ -51,36 +43,31 @@ export function AuthScreen() {
         return;
       }
 
-      if (isSignup && trimmedPassword.length < 6) {
-        toast.error('Password must be at least 6 characters');
+      if (isSignup && trimmedPassword.length < 4) {
+        toast.error('Password must be at least 4 characters');
         return;
       }
 
       setIsLoading(true);
 
-      try {
+      setTimeout(() => {
         if (isSignup) {
-          const ok = await signup(cleanUsername, trimmedPassword);
+          const ok = signup(trimmedUsername, trimmedPassword);
           if (ok) {
-            toast.success(`Welcome, ${cleanUsername}!`);
+            toast.success(`Welcome, ${trimmedUsername}!`);
           } else {
             toast.error('Something went wrong');
           }
         } else {
-          const result = await login(cleanUsername, trimmedPassword);
-          if (result.success) {
-            toast.success(`Welcome back, ${cleanUsername}!`);
-          } else if (result.lockedOut) {
-            toast.error(`Too many failed attempts. Try again in ${formatLockoutTime(result.remainingMs || 0)}`);
+          const ok = login(trimmedUsername, trimmedPassword);
+          if (ok) {
+            toast.success(`Welcome back, ${trimmedUsername}!`);
           } else {
             toast.error('Wrong username or password');
           }
         }
-      } catch {
-        toast.error('Something went wrong. Please try again.');
-      } finally {
         setIsLoading(false);
-      }
+      }, 400);
     },
     [username, password, isSignup, signup, login]
   );
@@ -135,7 +122,7 @@ export function AuthScreen() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder={isSignup ? 'Min. 6 characters' : 'Enter your password'}
+                  placeholder={isSignup ? 'Create a password' : 'Enter your password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-11 text-sm border-border/60 focus:border-primary/40 transition-colors placeholder:text-muted-foreground pr-11"
@@ -178,16 +165,8 @@ export function AuthScreen() {
             </Button>
           </form>
 
-          {/* Security badge */}
-          <div className="flex items-center justify-center gap-1.5 mt-5">
-            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[11px] text-muted-foreground">
-              {isSignup ? 'Password encrypted & stored securely' : 'End-to-end encrypted session'}
-            </span>
-          </div>
-
           {/* Footer hint */}
-          <p className="text-center text-xs text-muted-foreground mt-4">
+          <p className="text-center text-xs text-muted-foreground mt-8">
             {isSignup
               ? 'Your notes are stored locally on this device'
               : 'Your data stays on this device'}

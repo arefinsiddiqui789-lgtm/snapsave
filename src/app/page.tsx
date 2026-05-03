@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNoteStore } from '@/store/note-store';
 import { useAuthStore } from '@/store/auth-store';
 import { Sidebar } from '@/components/snapnote/sidebar';
@@ -24,10 +24,6 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
-import { touchSession, getSession } from '@/lib/security';
-
-const SESSION_CHECK_INTERVAL = 60 * 1000; // Check every minute
-const INACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
@@ -38,25 +34,17 @@ export default function Home() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const initAuth = useAuthStore((s) => s.initAuth);
 
   const [authReady, setAuthReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileRightPanelOpen, setMobileRightPanelOpen] = useState(false);
 
-  const lastActivityRef = useRef<number>(Date.now());
-
-  // Initialize auth (check session validity)
+  // Wait for auth store to hydrate from localStorage
   useEffect(() => {
-    const init = async () => {
-      await initAuth();
-      setAuthReady(true);
-    };
-    // Small delay for Zustand persist hydration
-    const timer = setTimeout(init, 100);
+    const timer = setTimeout(() => setAuthReady(true), 100);
     return () => clearTimeout(timer);
-  }, [initAuth]);
+  }, []);
 
   // Check mobile
   useEffect(() => {
@@ -66,57 +54,15 @@ export default function Home() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Track user activity for session timeout
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const updateActivity = () => {
-      lastActivityRef.current = Date.now();
-      touchSession();
-    };
-
-    // Track mouse, keyboard, touch, and scroll activity
-    const events = ['mousedown', 'keydown', 'touchstart', 'scroll'] as const;
-    events.forEach((event) => {
-      window.addEventListener(event, updateActivity, { passive: true });
-    });
-
-    // Periodic session check
-    const checkInterval = setInterval(() => {
-      const session = getSession();
-      if (!session) {
-        // Session expired or destroyed
-        logout();
-        toast.error('Session expired. Please sign in again.');
-        return;
-      }
-      // Check inactivity
-      const inactiveTime = Date.now() - lastActivityRef.current;
-      if (inactiveTime > INACTIVITY_TIMEOUT) {
-        logout();
-        toast.error('Session expired due to inactivity. Please sign in again.');
-      }
-    }, SESSION_CHECK_INTERVAL);
-
-    return () => {
-      events.forEach((event) => {
-        window.removeEventListener(event, updateActivity);
-      });
-      clearInterval(checkInterval);
-    };
-  }, [isAuthenticated, logout]);
-
   // Cleanup expired notes periodically
   useEffect(() => {
-    if (!isAuthenticated) return;
     cleanupExpiredNotes();
     const interval = setInterval(cleanupExpiredNotes, 30000);
     return () => clearInterval(interval);
-  }, [cleanupExpiredNotes, isAuthenticated]);
+  }, [cleanupExpiredNotes]);
 
   // Keyboard shortcuts
   useEffect(() => {
-    if (!isAuthenticated) return;
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
@@ -135,16 +81,11 @@ export default function Home() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setCreateNoteDialogOpen, activeNoteId, isAuthenticated]);
+  }, [setCreateNoteDialogOpen, activeNoteId]);
 
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   }, [theme, setTheme]);
-
-  const handleLogout = useCallback(() => {
-    logout();
-    toast.success('Logged out');
-  }, [logout]);
 
   // Show loading while auth hydrates
   if (!authReady) {
@@ -218,7 +159,10 @@ export default function Home() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-destructive"
-              onClick={handleLogout}
+              onClick={() => {
+                logout();
+                toast.success('Logged out');
+              }}
               title="Log out"
             >
               <LogOut className="h-4 w-4" />
@@ -269,7 +213,10 @@ export default function Home() {
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-destructive"
-            onClick={handleLogout}
+            onClick={() => {
+              logout();
+              toast.success('Logged out');
+            }}
             title="Log out"
           >
             <LogOut className="h-3.5 w-3.5" />
