@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/store/auth-store';
+import { useThemeStore, COLOR_THEMES, ColorTheme } from '@/store/theme-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, ArrowRight, LogIn } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, LogIn, Sun, Moon } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -13,8 +15,15 @@ export function AuthScreen() {
   const user = useAuthStore((s) => s.user);
   const signup = useAuthStore((s) => s.signup);
   const login = useAuthStore((s) => s.login);
+  const { theme, setTheme } = useTheme();
+  const { colorTheme, setColorTheme } = useThemeStore();
 
   const isSignup = !user;
+
+  // Apply data-theme attribute
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', colorTheme);
+  }, [colorTheme]);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -180,6 +189,39 @@ export function AuthScreen() {
             <p className="text-[11px] text-muted-foreground mt-0.5">
               Studying in Computer Science and Engineering at IUB
             </p>
+          </div>
+
+          {/* Color theme picker */}
+          <div className="mt-4 pt-3 border-t border-border/30">
+            <div className="flex items-center justify-center gap-2 mb-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Theme
+              </p>
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="h-5 w-5 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all"
+                title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              >
+                {theme === 'dark' ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+              </button>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              {COLOR_THEMES.map((t) => (
+                <button
+                  key={t.name}
+                  onClick={() => setColorTheme(t.name)}
+                  title={t.label}
+                  className={`
+                    h-5 w-5 rounded-full border-2 transition-all active:scale-90
+                    ${colorTheme === t.name
+                      ? 'border-foreground scale-110'
+                      : 'border-transparent hover:border-muted-foreground/30 hover:scale-105'
+                    }
+                  `}
+                  style={{ backgroundColor: t.color }}
+                />
+              ))}
+            </div>
           </div>
         </motion.div>
       </AnimatePresence>
