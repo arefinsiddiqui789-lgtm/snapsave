@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { useNoteStore } from '@/store/note-store';
-import { getRelativeTime, getTagColorClass, TemporaryDuration } from '@/types/note';
+import { getRelativeTime, getTagColorClass, TemporaryDuration, formatDateTime, formatTime } from '@/types/note';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -386,14 +386,14 @@ export function RightPanel() {
               <Calendar className="h-3 w-3 inline mr-1" />
               Timestamps
             </h4>
-            <div className="space-y-1.5 text-[11px] text-muted-foreground">
-              <div className="flex justify-between">
-                <span>Created</span>
-                <span className="tabular-nums">{getRelativeTime(activeNote.createdAt)}</span>
+            <div className="space-y-2 text-[11px]">
+              <div className="bg-secondary/30 rounded-lg px-3 py-2">
+                <div className="text-muted-foreground/60 text-[9px] uppercase tracking-wider font-semibold mb-0.5">Created</div>
+                <div className="text-foreground/80 font-medium">{formatDateTime(activeNote.createdAt)}</div>
               </div>
-              <div className="flex justify-between">
-                <span>Modified</span>
-                <span className="tabular-nums">{getRelativeTime(activeNote.updatedAt)}</span>
+              <div className="bg-secondary/30 rounded-lg px-3 py-2">
+                <div className="text-muted-foreground/60 text-[9px] uppercase tracking-wider font-semibold mb-0.5">Last Modified</div>
+                <div className="text-foreground/80 font-medium">{formatDateTime(activeNote.updatedAt)}</div>
               </div>
             </div>
           </div>
@@ -451,7 +451,7 @@ export function RightPanel() {
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] text-muted-foreground tabular-nums">
-                              {getRelativeTime(version.savedAt)}
+                              {formatDateTime(version.savedAt)}
                             </span>
                             <RotateCcw className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>

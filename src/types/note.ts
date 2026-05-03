@@ -94,6 +94,36 @@ export function getRelativeTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+export function formatDateTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+export function formatTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+export function formatDate(timestamp: number): string {
+  const now = Date.now();
+  const today = new Date(now).toDateString();
+  const yesterday = new Date(now - 86400000).toDateString();
+  const noteDate = new Date(timestamp).toDateString();
+
+  if (noteDate === today) return 'Today';
+  if (noteDate === yesterday) return 'Yesterday';
+  return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export function groupNotesByDate(notes: Note[]): Record<string, Note[]> {
   const groups: Record<string, Note[]> = {};
   const now = Date.now();
@@ -110,9 +140,9 @@ export function groupNotesByDate(notes: Note[]): Record<string, Note[]> {
       label = 'Yesterday';
     } else {
       label = new Date(note.updatedAt).toLocaleDateString('en-US', {
-        month: 'long',
+        weekday: 'short',
+        month: 'short',
         day: 'numeric',
-        year: 'numeric',
       });
     }
 

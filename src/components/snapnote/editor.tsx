@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { useNoteStore } from '@/store/note-store';
-import { getNoteTitle } from '@/types/note';
+import { getNoteTitle, formatDateTime, formatTime, formatDate } from '@/types/note';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -15,10 +15,11 @@ import {
   Minimize2,
   Maximize2,
   Check,
-  Tag,
   Wand2,
   List,
   Tags,
+  Save,
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +43,7 @@ export function Editor() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [showAIPanel, setShowAIPanel] = useState(false);
 
   // Auto-save with debounce
@@ -50,10 +52,12 @@ export function Editor() {
       if (!activeNoteId) return;
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = setTimeout(() => {
+        const now = Date.now();
         updateNote(activeNoteId, { [field]: value });
+        setLastSavedAt(now);
         setShowSaved(true);
-        setTimeout(() => setShowSaved(false), 1800);
-      }, 500);
+        setTimeout(() => setShowSaved(false), 2500);
+      }, 400);
     },
     [activeNoteId, updateNote]
   );
@@ -82,6 +86,14 @@ export function Editor() {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, []);
+
+  // Auto-resize title on mount / note switch
+  useEffect(() => {
+    if (titleRef.current && activeNote) {
+      titleRef.current.style.height = 'auto';
+      titleRef.current.style.height = titleRef.current.scrollHeight + 'px';
+    }
+  }, [activeNoteId, activeNote?.title]);
 
   // Copy note content
   const handleCopy = useCallback(async () => {
@@ -191,10 +203,14 @@ export function Editor() {
     }
   }, [activeNote, activeNoteId, setIsAiLoading]);
 
-  // Auto-focus content on new note
+  // Reset lastSavedAt when switching notes
   useEffect(() => {
-    if (activeNote && !activeNote.content.trim() && !activeNote.title.trim()) {
-      setTimeout(() => titleRef.current?.focus(), 150);
+    if (activeNote) {
+      setLastSavedAt(activeNote.updatedAt);
+      // Auto-focus title on new empty note
+      if (!activeNote.content.trim() && !activeNote.title.trim()) {
+        setTimeout(() => titleRef.current?.focus(), 150);
+      }
     }
   }, [activeNoteId]);
 
@@ -232,10 +248,6 @@ export function Editor() {
             <span className="flex items-center gap-1.5">
               <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">Ctrl+F</kbd>
               Search
-            </span>
-            <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">Ctrl+⇧+P</kbd>
-              Pin
             </span>
           </div>
         </motion.div>
@@ -284,15 +296,15 @@ export function Editor() {
 
         <div className="flex items-center gap-1.5">
           <AnimatePresence>
-            {showSaved && (
+            {showSaved && lastSavedAt && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium"
+                initial={{ opacity: 0, scale: 0.9, x: 10 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.9, x: 10 }}
+                className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full"
               >
                 <Check className="h-3 w-3" />
-                Saved
+                Saved at {formatTime(lastSavedAt)}
               </motion.div>
             )}
           </AnimatePresence>
@@ -362,20 +374,37 @@ export function Editor() {
       {/* Editor Area */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-3xl mx-auto px-5 py-6 md:px-10 md:py-8">
-          {/* Title */}
+          {/* Title - clearly editable */}
           <textarea
             ref={titleRef}
             value={activeNote.title}
             onChange={handleTitleChange}
-            placeholder="Note title…"
+            placeholder="Enter note title…"
             className="w-full text-2xl md:text-3xl font-bold bg-transparent border-none outline-none resize-none font-[family-name:var(--font-title)] text-foreground placeholder:text-muted-foreground/40 leading-tight overflow-hidden"
             rows={1}
             style={{ height: 'auto' }}
           />
 
+          {/* Date & Time line */}
+          <div className="flex items-center gap-3 mt-2 mb-4 text-[12px] text-muted-foreground/60">
+            <span className="inline-flex items-center gap-1.5">
+              <Calendar className="h-3 w-3" />
+              Created {formatDateTime(activeNote.createdAt)}
+            </span>
+            {activeNote.updatedAt !== activeNote.createdAt && (
+              <>
+                <span className="text-muted-foreground/30">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Save className="h-3 w-3" />
+                  Last edited {formatDate(activeNote.updatedAt)} at {formatTime(activeNote.updatedAt)}
+                </span>
+              </>
+            )}
+          </div>
+
           {/* Tags display */}
           {activeNote.tags.length > 0 && (
-            <div className="flex gap-1.5 flex-wrap mt-2 mb-3">
+            <div className="flex gap-1.5 flex-wrap mb-3">
               {activeNote.tags.map((tag) => (
                 <Badge
                   key={tag}
@@ -417,7 +446,7 @@ export function Editor() {
             ref={contentRef}
             value={activeNote.content}
             onChange={handleContentChange}
-            placeholder="Start typing your note…"
+            placeholder="Start writing your note…"
             className="editor-content w-full min-h-[50vh] bg-transparent border-none outline-none resize-none text-[15px] leading-relaxed text-foreground/85 placeholder:text-muted-foreground/35 font-[family-name:var(--font-body)] focus:placeholder:text-muted-foreground/20 transition-colors"
           />
         </div>

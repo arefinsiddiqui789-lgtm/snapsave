@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useNoteStore } from '@/store/note-store';
-import { getNoteTitle, getNotePreview, getRelativeTime, getTagColorClass, groupNotesByDate } from '@/types/note';
+import { getNoteTitle, getNotePreview, getRelativeTime, getTagColorClass, groupNotesByDate, formatTime } from '@/types/note';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -305,8 +305,9 @@ export function Sidebar() {
                             </div>
                           )}
                         </div>
-                        <span className="text-[10px] text-muted-foreground/40 shrink-0 mt-0.5 tabular-nums">
-                          {getRelativeTime(note.updatedAt)}
+                        <span className="text-[10px] text-muted-foreground/40 shrink-0 mt-0.5 tabular-nums text-right leading-tight">
+                          <span className="block">{getRelativeTime(note.updatedAt)}</span>
+                          <span className="block text-[9px] text-muted-foreground/30">{formatTime(note.updatedAt)}</span>
                         </span>
                       </div>
                     </button>
