@@ -18,9 +18,10 @@ interface NoteState {
   sidebarOpen: boolean;
   rightPanelOpen: boolean;
   isAiLoading: boolean;
+  createNoteDialogOpen: boolean;
 
   // Actions
-  createNote: () => string;
+  createNote: (title?: string, content?: string) => string;
   deleteNote: (id: string) => void;
   updateNote: (id: string, updates: Partial<Note>) => void;
   setActiveNote: (id: string | null) => void;
@@ -38,6 +39,7 @@ interface NoteState {
   setSidebarOpen: (open: boolean) => void;
   setRightPanelOpen: (open: boolean) => void;
   setIsAiLoading: (loading: boolean) => void;
+  setCreateNoteDialogOpen: (open: boolean) => void;
   getActiveNote: () => Note | undefined;
   getFilteredNotes: () => Note[];
   getAllTags: () => string[];
@@ -74,13 +76,19 @@ export const useNoteStore = create<NoteState>()(
       sidebarOpen: true,
       rightPanelOpen: true,
       isAiLoading: false,
+      createNoteDialogOpen: false,
 
-      createNote: () => {
+      createNote: (title?: string, content?: string) => {
         const id = generateId();
-        const newNote = createNewNote(id);
+        const newNote = {
+          ...createNewNote(id),
+          title: title || '',
+          content: content || '',
+        };
         set((state) => ({
           notes: [newNote, ...state.notes],
           activeNoteId: id,
+          createNoteDialogOpen: false,
         }));
         return id;
       },
@@ -263,6 +271,7 @@ export const useNoteStore = create<NoteState>()(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
       setIsAiLoading: (loading) => set({ isAiLoading: loading }),
+      setCreateNoteDialogOpen: (open) => set({ createNoteDialogOpen: open }),
 
       getActiveNote: () => {
         const state = get();

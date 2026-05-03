@@ -48,3 +48,29 @@ Stage Summary:
 - Sidebar no longer uses expensive Framer Motion layout animations on note items
 - All components use Zustand selectors for minimal re-renders
 - Title field is editable and separate from content, with date/time display
+
+---
+Task ID: 3
+Agent: Main
+Task: Add Create Note dialog with form fields instead of instant creation
+
+Work Log:
+- Added `createNoteDialogOpen` and `setCreateNoteDialogOpen` to Zustand store
+- Updated `createNote` to accept optional `title` and `content` parameters
+- Created `CreateNoteDialog` component with "Note Name" and "Note Details" form fields
+- Dialog uses shadcn/ui Dialog, Input, Textarea, Label components
+- Form validation: Note Name is required, Note Details is optional
+- Ctrl+Enter shortcut to save from within the dialog
+- Updated Sidebar "New Note" button to open dialog instead of instant creation
+- Updated page.tsx mobile + button to open dialog
+- Updated Editor welcome screen "Create Your First Note" button to open dialog
+- Updated Ctrl+N keyboard shortcut to open dialog
+- Added CreateNoteDialog component to both mobile and desktop layouts in page.tsx
+- All lint checks pass with zero errors/warnings
+
+Stage Summary:
+- Clicking "New Note" now opens a beautiful dialog with "Note Name" and "Note Details" fields
+- After saving, the note appears in the sidebar and can be edited anytime
+- Notes can be freely edited in the editor after creation (title and content both editable)
+- Dialog resets form fields each time it opens
+- All creation triggers (button, Ctrl+N, welcome screen) open the dialog

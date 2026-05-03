@@ -30,7 +30,7 @@ export function Sidebar() {
   const setSelectedTag = useNoteStore((s) => s.setSelectedTag);
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
   const setActiveNote = useNoteStore((s) => s.setActiveNote);
-  const createNote = useNoteStore((s) => s.createNote);
+  const setCreateNoteDialogOpen = useNoteStore((s) => s.setCreateNoteDialogOpen);
   const getFilteredNotes = useNoteStore((s) => s.getFilteredNotes);
   const getAllTags = useNoteStore((s) => s.getAllTags);
   const notes = useNoteStore((s) => s.notes);
@@ -96,7 +96,7 @@ export function Sidebar() {
           variant="ghost"
           size="icon"
           className="h-8 w-8 hover:bg-primary/10"
-          onClick={() => createNote()}
+          onClick={() => setCreateNoteDialogOpen(true)}
           title="New note (Ctrl+N)"
         >
           <Plus className="h-4 w-4" />
@@ -313,7 +313,7 @@ export function Sidebar() {
       {/* New Note button */}
       <div className="p-3 border-t border-border/60">
         <Button
-          onClick={() => createNote()}
+          onClick={() => setCreateNoteDialogOpen(true)}
           className="w-full h-9 text-sm font-medium gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" />

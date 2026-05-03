@@ -31,7 +31,7 @@ export function Editor() {
   const deleteNote = useNoteStore((s) => s.deleteNote);
   const togglePin = useNoteStore((s) => s.togglePin);
   const toggleHighPriority = useNoteStore((s) => s.toggleHighPriority);
-  const createNote = useNoteStore((s) => s.createNote);
+  const setCreateNoteDialogOpen = useNoteStore((s) => s.setCreateNoteDialogOpen);
   const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
   const isAiLoading = useNoteStore((s) => s.isAiLoading);
 
@@ -250,7 +250,7 @@ export function Editor() {
             Your intelligent note-taking companion. Capture thoughts instantly, organize automatically, and retrieve effortlessly.
           </p>
           <Button
-            onClick={() => createNote()}
+            onClick={() => setCreateNoteDialogOpen(true)}
             className="mt-6 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-all active:scale-[0.97]"
             size="lg"
           >

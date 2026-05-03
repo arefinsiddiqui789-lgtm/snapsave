@@ -5,6 +5,7 @@ import { useNoteStore } from '@/store/note-store';
 import { Sidebar } from '@/components/snapnote/sidebar';
 import { Editor } from '@/components/snapnote/editor';
 import { RightPanel } from '@/components/snapnote/right-panel';
+import { CreateNoteDialog } from '@/components/snapnote/create-note-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -19,11 +20,10 @@ import {
   Plus,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { toast } from 'sonner';
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
-  const createNote = useNoteStore((s) => s.createNote);
+  const setCreateNoteDialogOpen = useNoteStore((s) => s.setCreateNoteDialogOpen);
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
   const notes = useNoteStore((s) => s.notes);
   const cleanupExpiredNotes = useNoteStore((s) => s.cleanupExpiredNotes);
@@ -47,20 +47,12 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [cleanupExpiredNotes]);
 
-  // Auto-create first note if no notes exist
-  useEffect(() => {
-    if (notes.length === 0) {
-      createNote();
-    }
-  }, [notes.length, createNote]);
-
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
-        createNote();
-        toast.success('New note created');
+        setCreateNoteDialogOpen(true);
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
         e.preventDefault();
@@ -76,7 +68,7 @@ export default function Home() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [createNote, activeNoteId]);
+  }, [setCreateNoteDialogOpen, activeNoteId]);
 
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -110,7 +102,7 @@ export default function Home() {
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => createNote()}
+              onClick={() => setCreateNoteDialogOpen(true)}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -143,6 +135,9 @@ export default function Home() {
         <div className="flex-1 overflow-hidden">
           <Editor />
         </div>
+
+        {/* Create Note Dialog */}
+        <CreateNoteDialog />
       </div>
     );
   }
@@ -175,6 +170,9 @@ export default function Home() {
 
       {/* Right panel */}
       <RightPanel />
+
+      {/* Create Note Dialog */}
+      <CreateNoteDialog />
     </div>
   );
 }
