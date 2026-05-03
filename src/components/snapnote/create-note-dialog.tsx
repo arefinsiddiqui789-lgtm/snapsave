@@ -14,9 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Sparkles, FileText, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
 
 export function CreateNoteDialog() {
   const createNoteDialogOpen = useNoteStore((s) => s.createNoteDialogOpen);
@@ -30,7 +29,6 @@ export function CreateNoteDialog() {
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (open) {
-        // Reset form when dialog opens
         setNoteName('');
         setNoteDetails('');
         setTimeout(() => nameInputRef.current?.focus(), 100);
@@ -51,7 +49,7 @@ export function CreateNoteDialog() {
     }
 
     createNote(name, details);
-    toast.success('Note created successfully!');
+    toast.success('Note created!');
   }, [noteName, noteDetails, createNote]);
 
   const handleKeyDown = useCallback(
@@ -66,83 +64,70 @@ export function CreateNoteDialog() {
 
   return (
     <Dialog open={createNoteDialogOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-0 gap-0 overflow-hidden">
-        {/* Header with gradient */}
-        <div className="relative px-6 pt-6 pb-4 bg-gradient-to-br from-primary/5 via-transparent to-transparent">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <DialogHeader>
-                <DialogTitle className="text-lg font-bold font-[family-name:var(--font-title)]">
-                  Create New Note
-                </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Fill in the details below. You can edit anytime later.
-                </DialogDescription>
-              </DialogHeader>
-            </div>
-          </div>
+      <DialogContent className="sm:max-w-[440px] p-0 gap-0 overflow-hidden">
+        {/* Header — simple, no decoration */}
+        <div className="px-5 pt-5 pb-3">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold font-[family-name:var(--font-title)]">
+              New Note
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground/60 mt-0.5">
+              Give it a name and add some details. You can edit anytime.
+            </DialogDescription>
+          </DialogHeader>
         </div>
 
         {/* Form */}
-        <div className="px-6 py-4 space-y-4" onKeyDown={handleKeyDown}>
-          {/* Note Name */}
-          <div className="space-y-2">
-            <Label htmlFor="note-name" className="text-sm font-semibold text-foreground/90">
-              <FileText className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5 text-primary" />
-              Note Name
+        <div className="px-5 py-3 space-y-4" onKeyDown={handleKeyDown}>
+          <div className="space-y-1.5">
+            <Label htmlFor="note-name" className="text-xs font-semibold text-foreground/80">
+              Note Name <span className="text-destructive/70">*</span>
             </Label>
             <Input
               id="note-name"
               ref={nameInputRef}
               placeholder="e.g. Meeting Notes, Project Ideas…"
-              className="h-10 text-sm border-border/60 focus:border-primary/50 focus:ring-primary/20 transition-all"
+              className="h-9 text-sm border-border/50 focus:border-primary/40 transition-colors placeholder:text-muted-foreground/30"
               value={noteName}
               onChange={(e) => setNoteName(e.target.value)}
               maxLength={120}
             />
           </div>
 
-          {/* Note Details */}
-          <div className="space-y-2">
-            <Label htmlFor="note-details" className="text-sm font-semibold text-foreground/90">
-              <Plus className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5 text-primary" />
+          <div className="space-y-1.5">
+            <Label htmlFor="note-details" className="text-xs font-semibold text-foreground/80">
               Note Details
             </Label>
             <Textarea
               id="note-details"
               placeholder="Write your note content here…"
-              className="min-h-[140px] text-sm border-border/60 focus:border-primary/50 focus:ring-primary/20 transition-all resize-none"
+              className="min-h-[120px] text-sm border-border/50 focus:border-primary/40 transition-colors resize-none placeholder:text-muted-foreground/30"
               value={noteDetails}
               onChange={(e) => setNoteDetails(e.target.value)}
             />
-            <p className="text-[10px] text-muted-foreground/50">
-              You can always edit and add more details later
+            <p className="text-[10px] text-muted-foreground/35">
+              Optional — you can always add more later
             </p>
           </div>
         </div>
 
         {/* Footer */}
-        <DialogFooter className="px-6 pb-5 pt-2 flex-row gap-2 sm:gap-2">
+        <DialogFooter className="px-5 pb-5 pt-1 flex-row gap-2 sm:gap-2">
           <Button
             variant="outline"
-            className="flex-1 h-9 text-sm"
+            className="flex-1 h-9 text-sm border-border/50"
             onClick={() => setCreateNoteDialogOpen(false)}
           >
             Cancel
           </Button>
-          <motion.div whileTap={{ scale: 0.97 }} className="flex-1">
-            <Button
-              className="w-full h-9 text-sm gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-              onClick={handleSave}
-              disabled={!noteName.trim()}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Save Note
-            </Button>
-          </motion.div>
+          <Button
+            className="flex-1 h-9 text-sm gap-1.5 bg-primary/90 hover:bg-primary text-primary-foreground transition-all active:scale-[0.97] rounded-md"
+            onClick={handleSave}
+            disabled={!noteName.trim()}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Save Note
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

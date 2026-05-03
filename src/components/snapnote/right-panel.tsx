@@ -5,7 +5,6 @@ import { useNoteStore } from '@/store/note-store';
 import { getTagColorClass, TemporaryDuration, formatDateTime } from '@/types/note';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Pin,
@@ -126,7 +125,6 @@ export function RightPanel() {
     const ms = totalMinutes * 60 * 1000;
     setTemporaryCustom(activeNoteId, ms);
 
-    // Build friendly label
     let label = '';
     if (hours > 0) label += `${hours} hour${hours > 1 ? 's' : ''}`;
     if (hours > 0 && minutes > 0) label += ' ';
@@ -147,7 +145,6 @@ export function RightPanel() {
     [handleCustomTimer]
   );
 
-  // AI Summarize
   const handleSummarize = useCallback(async () => {
     if (!activeNote?.content.trim()) {
       toast.error('Write something first');
@@ -180,7 +177,6 @@ export function RightPanel() {
     }
   }, [activeNote, activeNoteId, updateNote, setIsAiLoading]);
 
-  // AI Suggest Tags
   const handleSuggestTags = useCallback(async () => {
     if (!activeNote?.content.trim()) {
       toast.error('Write something first');
@@ -219,13 +215,13 @@ export function RightPanel() {
 
   if (!rightPanelOpen) {
     return (
-      <div className="flex flex-col items-center py-3 px-1.5 border-l border-border">
+      <div className="flex flex-col items-center py-3 px-1.5 border-l border-border/60">
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 hover:bg-primary/10"
+          className="h-8 w-8 text-muted-foreground/50 hover:text-foreground"
           onClick={() => setRightPanelOpen(true)}
-          title="Open details panel"
+          title="Open details"
         >
           <PanelRight className="h-4 w-4" />
         </Button>
@@ -235,20 +231,20 @@ export function RightPanel() {
 
   if (!activeNote) {
     return (
-      <div className="w-[260px] min-w-[260px] border-l border-border bg-sidebar panel-transition flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
-          <span className="text-sm font-semibold font-[family-name:var(--font-title)]">Details</span>
+      <div className="w-[240px] min-w-[240px] border-l border-border/60 bg-sidebar panel-transition flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
+          <span className="text-sm font-semibold font-[family-name:var(--font-title)] text-foreground/80">Details</span>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground"
+            className="h-7 w-7 text-muted-foreground/50"
             onClick={() => setRightPanelOpen(false)}
           >
             <PanelRightClose className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-          Select a note
+        <div className="flex-1 flex items-center justify-center text-muted-foreground/40 text-sm">
+          No note selected
         </div>
       </div>
     );
@@ -261,14 +257,14 @@ export function RightPanel() {
   ];
 
   return (
-    <div className="w-[260px] min-w-[260px] border-l border-border bg-sidebar panel-transition flex flex-col">
+    <div className="w-[240px] min-w-[240px] border-l border-border/60 bg-sidebar panel-transition flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
-        <span className="text-sm font-semibold font-[family-name:var(--font-title)]">Details</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
+        <span className="text-sm font-semibold font-[family-name:var(--font-title)] text-foreground/80">Details</span>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground"
+          className="h-7 w-7 text-muted-foreground/50"
           onClick={() => setRightPanelOpen(false)}
         >
           <PanelRightClose className="h-4 w-4" />
@@ -276,19 +272,18 @@ export function RightPanel() {
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
-          {/* Status */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-              Status
-            </h4>
+        <div className="p-3.5 space-y-5">
+
+          {/* Status — toggle switches feel */}
+          <div className="space-y-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Status</p>
             <div className="flex gap-2">
               <button
                 onClick={() => togglePin(activeNote.id)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all active:scale-95 ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   activeNote.isPinned
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                    : 'bg-secondary/60 text-muted-foreground hover:bg-secondary'
+                    ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/15 dark:text-amber-400'
+                    : 'bg-secondary/40 text-muted-foreground/60 hover:bg-secondary/70 hover:text-foreground'
                 }`}
               >
                 <Pin className="h-3 w-3" />
@@ -296,44 +291,39 @@ export function RightPanel() {
               </button>
               <button
                 onClick={() => toggleHighPriority(activeNote.id)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all active:scale-95 ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                   activeNote.isHighPriority
-                    ? 'bg-destructive/10 text-destructive'
-                    : 'bg-secondary/60 text-muted-foreground hover:bg-secondary'
+                    ? 'bg-red-50 text-red-600 dark:bg-red-900/15 dark:text-red-400'
+                    : 'bg-secondary/40 text-muted-foreground/60 hover:bg-secondary/70 hover:text-foreground'
                 }`}
               >
                 <Flame className="h-3 w-3" />
-                Priority
+                {activeNote.isHighPriority ? 'Priority' : 'Priority'}
               </button>
             </div>
           </div>
 
-          <Separator />
-
-          {/* Self-Destruct Timer */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          {/* Self-Destruct */}
+          <div className="space-y-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
               <Timer className="h-3 w-3 inline mr-1" />
               Self-Destruct
-            </h4>
+            </p>
             {activeNote.isTemporary && activeNote.expiresAt ? (
-              <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 rounded-lg px-3 py-2.5">
+              <div className="flex items-center justify-between bg-orange-50 dark:bg-orange-900/10 rounded-md px-3 py-2">
                 <CountdownTimer expiresAt={activeNote.expiresAt} />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-[10px] text-orange-600 dark:text-orange-400 hover:text-orange-800 px-2"
+                <button
+                  className="text-[10px] text-orange-600 dark:text-orange-400 hover:text-orange-700 font-medium"
                   onClick={() => {
                     removeTemporary(activeNote.id);
                     toast.success('Timer cancelled');
                   }}
                 >
                   Cancel
-                </Button>
+                </button>
               </div>
             ) : (
               <div className="space-y-2">
-                {/* Preset buttons */}
                 <div className="flex gap-1.5">
                   {tempDurations.map((d) => (
                     <button
@@ -342,7 +332,7 @@ export function RightPanel() {
                         setTemporary(activeNote.id, d.key);
                         toast.success(`Self-destruct in ${d.label.toLowerCase()}`);
                       }}
-                      className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-medium bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground transition-all active:scale-95"
+                      className="flex-1 inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[10px] font-medium bg-secondary/40 text-muted-foreground/60 hover:bg-secondary/70 hover:text-foreground transition-all"
                     >
                       <Clock className="h-2.5 w-2.5" />
                       {d.short}
@@ -350,27 +340,23 @@ export function RightPanel() {
                   ))}
                 </div>
 
-                {/* Custom timer toggle */}
                 <button
                   onClick={() => setShowCustomTimer(!showCustomTimer)}
-                  className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all active:scale-95 ${
+                  className={`w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium transition-all ${
                     showCustomTimer
-                      ? 'bg-primary/10 text-primary'
-                      : 'bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      ? 'bg-primary/8 text-primary'
+                      : 'bg-secondary/40 text-muted-foreground/60 hover:bg-secondary/70 hover:text-foreground'
                   }`}
                 >
                   <Settings2 className="h-2.5 w-2.5" />
                   Custom Time
                 </button>
 
-                {/* Custom time input */}
                 {showCustomTimer && (
-                  <div className="space-y-2 p-2.5 bg-secondary/30 rounded-lg border border-border/40">
+                  <div className="space-y-2 p-2.5 bg-secondary/20 rounded-md border border-border/30">
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
-                        <label className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-semibold block mb-1">
-                          Hours
-                        </label>
+                        <label className="text-[9px] text-muted-foreground/40 block mb-1">Hours</label>
                         <Input
                           type="number"
                           min="0"
@@ -379,14 +365,12 @@ export function RightPanel() {
                           value={customHours}
                           onChange={(e) => setCustomHours(e.target.value.replace(/[^0-9]/g, ''))}
                           onKeyDown={handleCustomTimerKeyDown}
-                          className="h-7 text-xs bg-background border-border/50 focus:border-primary/40 text-center"
+                          className="h-7 text-xs bg-background border-border/40 focus:border-primary/30 text-center"
                         />
                       </div>
-                      <span className="text-muted-foreground/40 text-xs pb-1.5">:</span>
+                      <span className="text-muted-foreground/30 text-xs pb-1.5">:</span>
                       <div className="flex-1">
-                        <label className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-semibold block mb-1">
-                          Minutes
-                        </label>
+                        <label className="text-[9px] text-muted-foreground/40 block mb-1">Min</label>
                         <Input
                           type="number"
                           min="0"
@@ -395,13 +379,13 @@ export function RightPanel() {
                           value={customMinutes}
                           onChange={(e) => setCustomMinutes(e.target.value.replace(/[^0-9]/g, ''))}
                           onKeyDown={handleCustomTimerKeyDown}
-                          className="h-7 text-xs bg-background border-border/50 focus:border-primary/40 text-center"
+                          className="h-7 text-xs bg-background border-border/40 focus:border-primary/30 text-center"
                         />
                       </div>
                     </div>
                     <Button
                       size="sm"
-                      className="w-full h-7 text-[11px] gap-1.5 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary border border-primary/20"
+                      className="w-full h-7 text-[11px] gap-1.5 bg-primary/8 text-primary hover:bg-primary/15 border border-primary/15"
                       variant="outline"
                       onClick={handleCustomTimer}
                     >
@@ -414,20 +398,18 @@ export function RightPanel() {
             )}
           </div>
 
-          <Separator />
-
           {/* Tags */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          <div className="space-y-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
               <Tag className="h-3 w-3 inline mr-1" />
               Tags
-            </h4>
+            </p>
             {activeNote.tags.length > 0 && (
               <div className="flex gap-1.5 flex-wrap">
                 {activeNote.tags.map((tag) => (
                   <span
                     key={tag}
-                    className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:opacity-80 transition-opacity ${getTagColorClass(tag)}`}
+                    className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-medium cursor-pointer hover:opacity-75 transition-opacity ${getTagColorClass(tag)}`}
                     onClick={() => {
                       removeTag(activeNote.id, tag);
                       toast.success(`Tag "${tag}" removed`);
@@ -442,7 +424,7 @@ export function RightPanel() {
             <div className="flex gap-1.5">
               <Input
                 placeholder="Add tag…"
-                className="h-7 text-xs bg-background border-border/50 focus:border-primary/40"
+                className="h-7 text-xs bg-secondary/30 border-transparent focus:border-primary/30 placeholder:text-muted-foreground/35"
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={handleTagKeyDown}
@@ -450,7 +432,7 @@ export function RightPanel() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 hover:bg-primary/10"
+                className="h-7 w-7 shrink-0 text-muted-foreground/50 hover:text-primary hover:bg-primary/8"
                 onClick={handleAddTag}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -458,57 +440,45 @@ export function RightPanel() {
             </div>
           </div>
 
-          <Separator />
-
-          {/* Timestamps */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          {/* Timestamps — like a book's publication info */}
+          <div className="space-y-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
               <Calendar className="h-3 w-3 inline mr-1" />
-              Timestamps
-            </h4>
-            <div className="space-y-2 text-[11px]">
-              <div className="bg-secondary/30 rounded-lg px-3 py-2">
-                <div className="text-muted-foreground/60 text-[9px] uppercase tracking-wider font-semibold mb-0.5">Created</div>
-                <div className="text-foreground/80 font-medium">{formatDateTime(activeNote.createdAt)}</div>
+              Timeline
+            </p>
+            <div className="space-y-1.5 text-[11px]">
+              <div className="flex justify-between items-center px-0.5">
+                <span className="text-muted-foreground/45">Created</span>
+                <span className="text-foreground/65 font-medium">{formatDateTime(activeNote.createdAt)}</span>
               </div>
-              <div className="bg-secondary/30 rounded-lg px-3 py-2">
-                <div className="text-muted-foreground/60 text-[9px] uppercase tracking-wider font-semibold mb-0.5">Last Modified</div>
-                <div className="text-foreground/80 font-medium">{formatDateTime(activeNote.updatedAt)}</div>
+              <div className="flex justify-between items-center px-0.5">
+                <span className="text-muted-foreground/45">Modified</span>
+                <span className="text-foreground/65 font-medium">{formatDateTime(activeNote.updatedAt)}</span>
               </div>
             </div>
           </div>
 
-          <Separator />
-
-          {/* AI Actions */}
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          {/* AI — clean, not flashy */}
+          <div className="space-y-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">
               <Sparkles className="h-3 w-3 inline mr-1" />
-              AI Assistant
-            </h4>
+              AI
+            </p>
             <div className="space-y-1.5">
               <button
                 onClick={handleSummarize}
                 disabled={isAiLoading || !activeNote.content.trim()}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 hover:bg-primary/10 text-[11px] font-medium text-primary/80 hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/50 text-[11px] font-medium text-foreground/70 hover:text-foreground transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                {isAiLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <List className="h-3 w-3" />
-                )}
+                {isAiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <List className="h-3 w-3" />}
                 Summarize
               </button>
               <button
                 onClick={handleSuggestTags}
                 disabled={isAiLoading || !activeNote.content.trim()}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 hover:bg-primary/10 text-[11px] font-medium text-primary/80 hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/50 text-[11px] font-medium text-foreground/70 hover:text-foreground transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                {isAiLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Tags className="h-3 w-3" />
-                )}
+                {isAiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Tags className="h-3 w-3" />}
                 Auto-Tag
               </button>
             </div>
