@@ -498,6 +498,9 @@ export function RightPanel() {
               <Heart className="h-3.5 w-3.5" />
               Buy Me a Coffee
             </button>
+            <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+              Your support helps me bring SnapNote Pro to the Google Play Store &amp; Apple App Store :)
+            </p>
           </div>
 
 

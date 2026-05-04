@@ -823,6 +823,9 @@ function MobileDetailsPanel() {
             <Coffee className="h-4 w-4" />
             Buy Me a Coffee
           </button>
+          <p className="text-[11px] text-muted-foreground text-center leading-relaxed mt-1">
+            Your support helps me bring SnapNote Pro to the Google Play Store &amp; Apple App Store :)
+          </p>
         </div>
 
         {/* Logout */}
