@@ -7,7 +7,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Copy, Check, Send, ExternalLink } from 'lucide-react';
+import { Copy, Check, Send, ExternalLink, Phone } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
@@ -57,48 +57,49 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
     }
   }, []);
 
-  // Send Money: copy number + open bKash app using a real <a> tag click
-  // Using <a> with intent:// is the officially supported way in Android Chrome
-  // It works differently from window.location.href — Chrome handles it natively
-  const handleSendMoney = useCallback(async (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault(); // Stop navigation temporarily
-
-    // Step 1: Copy number to clipboard
+  const handleSendMoney = useCallback(async () => {
+    // Step 1: Always copy number first
     await copyToClipboard(BKASH_NUMBER);
+
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+
+    if (isAndroid) {
+      // Android: Use market:// to open Play Store app directly
+      // The Play Store shows an "Open" button if bKash is installed
+      // This is the most reliable way to get the user into bKash from a web page
+      window.location.href = `market://details?id=${BKASH_ANDROID_PACKAGE}`;
+
+      // Fallback: if Play Store app isn't available, use web Play Store after 2s
+      setTimeout(() => {
+        if (!document.hidden) {
+          window.location.href = `https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`;
+        }
+      }, 2500);
+    } else if (isIOS) {
+      // iOS: Open App Store — shows "Open" button if app is installed
+      window.open(`https://apps.apple.com/app/id${BKASH_IOS_APP_ID}`, '_blank');
+    } else {
+      // Desktop: Open Play Store web page
+      window.open(`https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`, '_blank');
+    }
+
     toast.success('Number copied! Opening bKash...');
-
-    // Step 2: Open bKash app using the <a> tag's href natively
-    // This is more reliable than window.location.href for intent:// URLs
-    const link = e.currentTarget;
-    // Use a tiny timeout so the toast shows first
-    setTimeout(() => {
-      link.click(); // Re-trigger the <a> tag's native navigation
-    }, 100);
-
-    // Close the sheet
     setTimeout(() => {
       onOpenChange(false);
     }, 500);
   }, [onOpenChange]);
 
-  // Detect platform for the correct app link
-  const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
-  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/i.test(navigator.userAgent);
-
-  // Build the correct href based on platform
-  const getSendMoneyHref = () => {
-    if (isAndroid) {
-      // Android Chrome: intent:// URL with Play Store fallback
-      // This is the official Google-recommended format for opening apps from web pages
-      return `intent://#Intent;package=${BKASH_ANDROID_PACKAGE};S.browser_fallback_url=${encodeURIComponent(`https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`)};end`;
-    }
-    if (isIOS) {
-      // iOS: Direct App Store link (has "Open" button if app is installed)
-      return `https://apps.apple.com/app/id${BKASH_IOS_APP_ID}`;
-    }
-    // Desktop: Play Store page
-    return `https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`;
-  };
+  const handleDialUSSD = useCallback(async () => {
+    // Copy number first
+    await copyToClipboard(BKASH_NUMBER);
+    // USSD: *247*1*NUMBER# — works on any phone, even without bKash app
+    window.location.href = `tel:*247*1*${BKASH_NUMBER}%23`;
+    toast.success('Number copied! Dialing bKash...');
+    setTimeout(() => {
+      onOpenChange(false);
+    }, 500);
+  }, [onOpenChange]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -141,18 +142,16 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
 
           {/* Action Buttons */}
           <div className="w-full space-y-3">
-            {/* Send Money Button — PRIMARY action
-                Uses a real <a> tag so Android Chrome handles intent:// natively */}
-            <a
-              href={getSendMoneyHref()}
+            {/* Send Money Button — opens Play Store with "Open" button for bKash */}
+            <button
               onClick={handleSendMoney}
-              className="w-full flex items-center justify-center gap-2.5 px-4 py-4 rounded-2xl text-base font-bold transition-all active:scale-95 bg-[#E2136E] text-white shadow-lg shadow-[#E2136E]/30 no-underline"
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-4 rounded-2xl text-base font-bold transition-all active:scale-95 bg-[#E2136E] text-white shadow-lg shadow-[#E2136E]/30"
             >
               <Send className="h-5 w-5" />
               Send Money
-            </a>
+            </button>
 
-            {/* Copy Number Button — secondary */}
+            {/* Copy Number Button */}
             <button
               onClick={handleCopy}
               className={`w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${
@@ -173,19 +172,28 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
                 </>
               )}
             </button>
+
+            {/* Dial *247# — works on any phone without bKash app */}
+            <button
+              onClick={handleDialUSSD}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 bg-[#E2136E]/10 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[#E2136E]"
+            >
+              <Phone className="h-5 w-5" />
+              Dial *247# (No app needed)
+            </button>
           </div>
 
           {/* Instructions */}
           <div className="w-full bg-secondary/30 rounded-2xl p-4 space-y-2">
             <p className="text-xs font-semibold text-foreground">How to send:</p>
             <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
-              <li>Tap <strong>Send Money</strong> — number auto-copied & bKash opens</li>
-              <li>In bKash, go to <strong>Send Money</strong></li>
-              <li><strong>Long-press & paste</strong> the number in the &quot;To&quot; field</li>
+              <li>Tap <strong>Send Money</strong> → number auto-copied & bKash opens</li>
+              <li>In bKash, tap <strong>Send Money</strong></li>
+              <li><strong>Paste</strong> the number in the &quot;To&quot; field</li>
               <li>Enter amount, confirm with PIN — done!</li>
             </ol>
             <p className="text-[10px] text-muted-foreground/70 mt-2">
-              The number is automatically copied to your clipboard
+              Or tap <strong>Dial *247#</strong> to send via USSD without the app
             </p>
           </div>
 
