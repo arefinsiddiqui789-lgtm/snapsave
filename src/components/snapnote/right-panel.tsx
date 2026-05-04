@@ -23,10 +23,7 @@ import {
   Loader2,
   Settings2,
   Check,
-  Coffee,
-  Heart,
 } from 'lucide-react';
-import { BkashDialog } from '@/components/snapnote/bkash-dialog';
 import { toast } from 'sonner';
 
 function CountdownTimer({ expiresAt }: { expiresAt: number }) {
@@ -82,9 +79,6 @@ export function RightPanel() {
   const setRightPanelOpen = useNoteStore((s) => s.setRightPanelOpen);
   const isAiLoading = useNoteStore((s) => s.isAiLoading);
   const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
-  const bkashDialogOpen = useNoteStore((s) => s.bkashDialogOpen);
-  const setBkashDialogOpen = useNoteStore((s) => s.setBkashDialogOpen);
-
   const [newTag, setNewTag] = useState('');
   const [showCustomTimer, setShowCustomTimer] = useState(false);
   const [customHours, setCustomHours] = useState('');
@@ -489,28 +483,11 @@ export function RightPanel() {
             </div>
           </div>
 
-          {/* Support the developer */}
-          <div className="space-y-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <Heart className="h-3 w-3 inline mr-1" />
-              Support
-            </p>
-            <button
-              onClick={() => setBkashDialogOpen(true)}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-[#E2136E]/8 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[11px] font-semibold text-[#E2136E] dark:text-[#E2136E] hover:bg-[#E2136E]/15 dark:hover:bg-[#E2136E]/25 transition-all active:scale-[0.97]"
-            >
-              <Coffee className="h-3.5 w-3.5" />
-              Buy Me a Coffee
-            </button>
-          </div>
+
         </div>
       </ScrollArea>
 
-      {/* bKash Dialog */}
-      <BkashDialog
-        open={bkashDialogOpen}
-        onOpenChange={setBkashDialogOpen}
-      />
+
     </div>
   );
 }
