@@ -135,9 +135,18 @@ export default function Home() {
       <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
         {/* Status bar area — thin, app-like */}
         <div className="flex items-center justify-between px-4 pt-2 pb-1 bg-background/95 backdrop-blur-md z-20 safe-top">
-          <h1 className="text-[15px] font-bold font-[family-name:var(--font-title)] text-foreground">
-            SnapNote Pro
-          </h1>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCreateNoteDialogOpen(true)}
+              className="h-8 w-8 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform shadow-sm"
+              title="New Note"
+            >
+              <Plus className="h-4.5 w-4.5" />
+            </button>
+            <h1 className="text-[15px] font-bold font-[family-name:var(--font-title)] text-foreground">
+              SnapNote Pro
+            </h1>
+          </div>
           <div className="flex items-center gap-1">
             <button
               onClick={toggleTheme}
@@ -194,14 +203,6 @@ export default function Home() {
             )}
           </AnimatePresence>
         </div>
-
-        {/* Floating Action Button — New Note (left side for easy thumb reach) */}
-        <button
-          onClick={() => setCreateNoteDialogOpen(true)}
-          className="absolute left-5 bottom-[76px] z-30 h-14 w-14 rounded-full bg-primary shadow-lg shadow-primary/25 active:scale-90 transition-transform flex items-center justify-center"
-        >
-          <Plus className="h-6 w-6 text-primary-foreground" />
-        </button>
 
         {/* Bottom Tab Bar — Native app navigation */}
         <div className="bg-background/95 backdrop-blur-md border-t border-border/50 safe-bottom z-20">
