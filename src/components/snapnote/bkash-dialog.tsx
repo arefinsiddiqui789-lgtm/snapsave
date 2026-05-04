@@ -7,7 +7,6 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import Image from 'next/image';
 import { Copy, Check } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
@@ -63,7 +62,7 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
 
         <SheetHeader className="px-6 pt-1 pb-0">
           <SheetTitle className="flex items-center gap-2.5 text-lg">
-            <Image src="/bkash-logo.png" alt="bKash" width={32} height={32} className="rounded-lg" />
+            <img src="/bkash-logo.png" alt="bKash" className="h-8 w-8 rounded-lg object-contain" />
             Support via bKash
           </SheetTitle>
           <SheetDescription className="text-left">
@@ -73,8 +72,8 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
 
         <div className="flex flex-col items-center gap-5 px-6 py-5">
           {/* bKash Logo Large */}
-          <div className="h-20 w-20 rounded-2xl bg-[#E2136E]/10 dark:bg-[#E2136E]/15 flex items-center justify-center border border-[#E2136E]/20">
-            <Image src="/bkash-logo.png" alt="bKash" width={64} height={64} className="rounded-xl" />
+          <div className="h-24 w-24 rounded-2xl bg-[#E2136E]/10 dark:bg-[#E2136E]/15 flex items-center justify-center border border-[#E2136E]/20 p-2">
+            <img src="/bkash-logo.png" alt="bKash" className="h-full w-full rounded-xl object-contain" />
           </div>
 
           {/* bKash Number Display */}
