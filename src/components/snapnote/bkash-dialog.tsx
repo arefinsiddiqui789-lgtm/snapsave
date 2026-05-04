@@ -7,7 +7,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Copy, Check, Send, ExternalLink, Phone } from 'lucide-react';
+import { Copy, Check, Send, ExternalLink } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
@@ -90,17 +90,6 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
     }, 500);
   }, [onOpenChange]);
 
-  const handleDialUSSD = useCallback(async () => {
-    // Copy number first
-    await copyToClipboard(BKASH_NUMBER);
-    // USSD: *247*1*NUMBER# — works on any phone, even without bKash app
-    window.location.href = `tel:*247*1*${BKASH_NUMBER}%23`;
-    toast.success('Number copied! Dialing bKash...');
-    setTimeout(() => {
-      onOpenChange(false);
-    }, 500);
-  }, [onOpenChange]);
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -173,14 +162,6 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
               )}
             </button>
 
-            {/* Dial *247# — works on any phone without bKash app */}
-            <button
-              onClick={handleDialUSSD}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 bg-[#E2136E]/10 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[#E2136E]"
-            >
-              <Phone className="h-5 w-5" />
-              Dial *247# (No app needed)
-            </button>
           </div>
 
           {/* Instructions */}
@@ -192,9 +173,6 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
               <li><strong>Paste</strong> the number in the &quot;To&quot; field</li>
               <li>Enter amount, confirm with PIN — done!</li>
             </ol>
-            <p className="text-[10px] text-muted-foreground/70 mt-2">
-              Or tap <strong>Dial *247#</strong> to send via USSD without the app
-            </p>
           </div>
 
           {/* App download links */}
