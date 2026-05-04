@@ -23,6 +23,8 @@ import {
   Loader2,
   Settings2,
   Check,
+  Coffee,
+  Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -482,6 +484,23 @@ export function RightPanel() {
                 Auto-Tag
               </button>
             </div>
+          </div>
+
+          {/* Support the developer */}
+          <div className="space-y-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Heart className="h-3 w-3 inline mr-1" />
+              Support
+            </p>
+            <a
+              href="https://buymeacoffee.com/arefinsiddiqui"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/30 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/25 transition-all active:scale-[0.97]"
+            >
+              <Coffee className="h-3.5 w-3.5" />
+              Buy Me a Coffee
+            </a>
           </div>
         </div>
       </ScrollArea>

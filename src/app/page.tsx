@@ -37,6 +37,8 @@ import {
   Tags,
   Loader2,
   Check,
+  Coffee,
+  Heart,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
@@ -778,6 +780,23 @@ function MobileDetailsPanel() {
               Auto-Tag
             </button>
           </div>
+        </div>
+
+        {/* Support */}
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <Heart className="h-3.5 w-3.5 inline mr-1" />
+            Support
+          </p>
+          <a
+            href="https://buymeacoffee.com/arefinsiddiqui"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/30 text-sm font-semibold text-amber-700 dark:text-amber-400 active:scale-95 transition-all"
+          >
+            <Coffee className="h-4 w-4" />
+            Buy Me a Coffee
+          </a>
         </div>
 
         {/* Logout */}
