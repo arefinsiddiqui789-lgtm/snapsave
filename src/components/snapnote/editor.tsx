@@ -811,21 +811,60 @@ function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: ()
     });
   }, []);
 
-  // Download image
+  // Download image — async Blob conversion to avoid freezing on mobile with large base64
   const handleDownload = useCallback(() => {
-    const link = document.createElement('a');
-    link.href = src;
-    link.download = `snapnote-image-${Date.now()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
     setShowActions(false);
+    // Yield to browser first so UI updates, then do heavy work in next frame
+    setTimeout(() => {
+      try {
+        // Convert base64 data URL to Blob for memory-efficient download
+        const dataParts = src.split(',');
+        const mimeMatch = dataParts[0].match(/:(.*?);/);
+        const mimeString = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        const byteString = atob(dataParts[1]);
+
+        // Process in chunks to avoid blocking
+        const chunkSize = 8192;
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let offset = 0; offset < byteString.length; offset += chunkSize) {
+          const end = Math.min(offset + chunkSize, byteString.length);
+          for (let i = offset; i < end; i++) {
+            ia[i] = byteString.charCodeAt(i);
+          }
+        }
+
+        const blob = new Blob([ab], { type: mimeString });
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `snapnote-image-${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        // Revoke after a short delay to ensure download starts
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+        toast.success('Download started');
+      } catch {
+        // Fallback: open in new tab so user can save manually
+        try {
+          window.open(src, '_blank');
+          toast.success('Image opened — long-press to save');
+        } catch {
+          toast.error('Download failed');
+        }
+      }
+    }, 50);
   }, [src]);
 
   // Confirm delete
   const handleConfirmDelete = useCallback(() => {
-    onDelete();
-    onClose();
+    setShowActions(false);
+    // Use requestAnimationFrame to let the UI update before heavy state change
+    requestAnimationFrame(() => {
+      onDelete();
+      onClose();
+    });
   }, [onDelete, onClose]);
 
   // Clear long press timer on unmount
@@ -1040,7 +1079,8 @@ function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: ()
       {/* Top-left action buttons — Download & Delete */}
       <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
         <button
-          onClick={handleDownload}
+          onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+          onTouchEnd={(e) => e.stopPropagation()}
           className="h-12 w-12 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white active:bg-white/40 transition-colors"
           title="Download image"
         >
@@ -1049,7 +1089,8 @@ function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: ()
           </svg>
         </button>
         <button
-          onClick={() => setShowActions(true)}
+          onClick={(e) => { e.stopPropagation(); setShowActions(true); }}
+          onTouchEnd={(e) => e.stopPropagation()}
           className="h-12 w-12 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white active:bg-red-500/60 transition-colors"
           title="Delete image"
         >
@@ -1104,6 +1145,7 @@ function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: ()
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-20 flex items-end sm:items-center justify-center bg-black/40"
             onClick={() => setShowActions(false)}
+            onTouchEnd={(e) => e.stopPropagation()}
           >
             <motion.div
               initial={{ y: 100, opacity: 0 }}
@@ -1112,6 +1154,9 @@ function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: ()
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="bg-white dark:bg-zinc-900 rounded-2xl p-5 w-[90vw] max-w-[320px] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
             >
               <p className="text-base font-bold text-foreground mb-1">Image Actions</p>
               <p className="text-sm text-muted-foreground mb-5">What would you like to do?</p>
