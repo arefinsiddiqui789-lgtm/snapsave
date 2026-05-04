@@ -1,11 +1,13 @@
-const CACHE_NAME = 'snapnote-pro-v1';
+const CACHE_NAME = 'snapnote-pro-v2';
 
 const PRECACHE_URLS = [
   '/',
   '/manifest.webmanifest',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-maskable-512.png',
   '/apple-touch-icon.png',
+  '/favicon-32.png',
 ];
 
 // Install — precache critical assets
