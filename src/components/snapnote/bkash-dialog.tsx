@@ -7,11 +7,17 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Send } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
 const BKASH_NUMBER = '01701659879';
+
+// bKash deep link: opens the bKash app directly to Send Money with number pre-filled
+// Works on Android & iOS if bKash app is installed
+const BKASH_SEND_MONEY_URL = `bkash://send_money?phone=${BKASH_NUMBER}`;
+// Fallback web URL for users without the app
+const BKASH_WEB_URL = 'https://www.bkash.com';
 
 interface BkashDialogProps {
   open: boolean;
@@ -48,6 +54,28 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
       document.body.removeChild(textarea);
     }
   }, []);
+
+  const handleSendMoney = useCallback(() => {
+    // Try to open bKash app with deep link
+    const startTime = Date.now();
+
+    // Attempt to open the bKash app
+    window.location.href = BKASH_SEND_MONEY_URL;
+
+    // If the app didn't open after 1.5s, redirect to web version
+    setTimeout(() => {
+      // If the page is still visible, the app didn't open
+      if (Date.now() - startTime < 2000) {
+        toast.error('bKash app not found. Opening web version...');
+        setTimeout(() => {
+          window.open(BKASH_WEB_URL, '_blank');
+        }, 500);
+      }
+    }, 1500);
+
+    // Close the sheet
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -88,38 +116,51 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
             </div>
           </div>
 
-          {/* Copy Button */}
-          <button
-            onClick={handleCopy}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${
-              copied
-                ? 'bg-green-50 dark:bg-green-900/15 border border-green-200 dark:border-green-800/30 text-green-600 dark:text-green-400'
-                : 'bg-[#E2136E] text-white shadow-lg shadow-[#E2136E]/25'
-            }`}
-          >
-            {copied ? (
-              <>
-                <Check className="h-5 w-5" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-5 w-5" />
-                Copy Number
-              </>
-            )}
-          </button>
+          {/* Action Buttons */}
+          <div className="w-full space-y-3">
+            {/* Send Money Button — primary action */}
+            <button
+              onClick={handleSendMoney}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-4 rounded-2xl text-base font-bold transition-all active:scale-95 bg-[#E2136E] text-white shadow-lg shadow-[#E2136E]/30"
+            >
+              <Send className="h-5 w-5" />
+              Send Money
+            </button>
+
+            {/* Copy Number Button — secondary action */}
+            <button
+              onClick={handleCopy}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${
+                copied
+                  ? 'bg-green-50 dark:bg-green-900/15 border border-green-200 dark:border-green-800/30 text-green-600 dark:text-green-400'
+                  : 'bg-[#E2136E]/10 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[#E2136E]'
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-5 w-5" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-5 w-5" />
+                  Copy Number
+                </>
+              )}
+            </button>
+          </div>
 
           {/* Instructions */}
           <div className="w-full bg-secondary/30 rounded-2xl p-4 space-y-2">
             <p className="text-xs font-semibold text-foreground">How to send:</p>
             <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
-              <li>Copy the bKash number above</li>
-              <li>Open your bKash app</li>
-              <li>Go to &quot;Send Money&quot;</li>
-              <li>Paste the number and enter amount</li>
-              <li>Complete the transaction</li>
+              <li>Tap <strong>Send Money</strong> to open bKash app directly</li>
+              <li>Your number will be auto-filled — just enter the amount</li>
+              <li>Complete the transaction with your PIN</li>
             </ol>
+            <p className="text-[10px] text-muted-foreground/70 mt-2">
+              Or copy the number and send manually from your bKash app
+            </p>
           </div>
 
           {/* Thank you */}
