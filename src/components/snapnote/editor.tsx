@@ -39,20 +39,23 @@ function getReadTime(words: number): string {
   return `${minutes} min read`;
 }
 
-/** Compress image client-side: max 1200px width, quality 0.7 JPEG */
-function compressImage(file: File): Promise<File> {
+/** Compress image client-side and return as base64 data URL */
+function compressImageToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX_WIDTH = 1200;
+      const MAX_WIDTH = 800;
+      const MAX_HEIGHT = 800;
       let width = img.width;
       let height = img.height;
 
-      if (width > MAX_WIDTH) {
-        height = Math.round((height * MAX_WIDTH) / width);
-        width = MAX_WIDTH;
+      // Scale down to fit within max dimensions
+      if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+        const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
       }
 
       const canvas = document.createElement('canvas');
@@ -65,21 +68,9 @@ function compressImage(file: File): Promise<File> {
       }
       ctx.drawImage(img, 0, 0, width, height);
 
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error('Canvas toBlob failed'));
-            return;
-          }
-          const compressed = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-          });
-          resolve(compressed);
-        },
-        'image/jpeg',
-        0.7
-      );
+      // Convert to base64 data URL with compression
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+      resolve(dataUrl);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -111,6 +102,7 @@ export function Editor() {
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const [localTitle, setLocalTitle] = useState('');
   const [localContent, setLocalContent] = useState('');
@@ -197,10 +189,13 @@ export function Editor() {
       if (e.key === 'Escape' && isFocusMode) {
         setIsFocusMode(false);
       }
+      if (e.key === 'Escape' && lightboxImage) {
+        setLightboxImage(null);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFocusMode]);
+  }, [isFocusMode, lightboxImage]);
 
   const handleCopy = useCallback(async () => {
     if (!activeNote) return;
@@ -288,51 +283,31 @@ export function Editor() {
     }
   }, [localContent, activeNoteId, setIsAiLoading, flushAutoSave]);
 
-  /** Upload a file: compress → POST → addImage */
+  /** Upload a file: compress → base64 data URL → addImage (no server needed) */
   const uploadFile = useCallback(
     async (file: File) => {
       if (!activeNoteId) {
         toast.error('Select a note first');
         return;
       }
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error('Only JPG, PNG, GIF, WebP images are allowed');
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'];
+      if (!allowedTypes.includes(file.type) && !file.type.startsWith('image/')) {
+        toast.error('Only image files are allowed');
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image must be under 5MB');
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Image must be under 10MB');
         return;
       }
 
       setIsUploading(true);
       try {
-        // Compress client-side
-        const compressed = await compressImage(file);
-
-        const formData = new FormData();
-        formData.append('file', compressed);
-
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          toast.error(data.error || 'Upload failed');
-          return;
-        }
-
-        const data = await res.json();
-        if (data.url) {
-          addImage(activeNoteId, data.url);
-          toast.success('Image added');
-        } else {
-          toast.error('Upload failed');
-        }
+        // Compress and convert to base64 data URL entirely client-side
+        const dataUrl = await compressImageToBase64(file);
+        addImage(activeNoteId, dataUrl);
+        toast.success('Image added!');
       } catch {
-        toast.error('Failed to upload image');
+        toast.error('Failed to process image');
       } finally {
         setIsUploading(false);
       }
@@ -346,9 +321,14 @@ export function Editor() {
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        uploadFile(file);
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        // Upload all selected image files
+        for (const file of files) {
+          if (file.type.startsWith('image/')) {
+            uploadFile(file);
+          }
+        }
       }
       // Reset input so same file can be selected again
       e.target.value = '';
@@ -417,10 +397,10 @@ export function Editor() {
       setIsDragOver(false);
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
+        // Upload all image files from the drop
         for (const file of files) {
           if (file.type.startsWith('image/')) {
             uploadFile(file);
-            break;
           }
         }
       }
@@ -549,7 +529,8 @@ export function Editor() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/gif,image/webp"
+        accept="image/*"
+        multiple
         className="hidden"
         onChange={handleFileSelect}
       />
@@ -680,18 +661,23 @@ export function Editor() {
           {/* Images grid */}
           {activeNote.images.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-              {activeNote.images.map((imageUrl) => (
+              {activeNote.images.map((imageUrl, index) => (
                 <div
-                  key={imageUrl}
-                  className="group relative rounded-lg overflow-hidden border border-border/30 bg-secondary/20"
+                  key={`${imageUrl.slice(0, 50)}-${index}`}
+                  className="group relative rounded-lg overflow-hidden border border-border/30 bg-secondary/20 cursor-pointer"
+                  onClick={() => setLightboxImage(imageUrl)}
                 >
                   <img
                     src={imageUrl}
-                    alt="Note attachment"
-                    className="w-full h-32 object-cover"
+                    alt={`Note attachment ${index + 1}`}
+                    className="w-full h-32 object-cover transition-transform group-hover:scale-105"
                   />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                   <button
-                    onClick={() => handleRemoveImage(imageUrl)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveImage(imageUrl);
+                    }}
                     className="absolute top-1 right-1 h-5 w-5 rounded-full bg-background/80 border border-border/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
                     title="Remove image"
                   >
@@ -701,6 +687,36 @@ export function Editor() {
               ))}
             </div>
           )}
+
+          {/* Lightbox overlay */}
+          <AnimatePresence>
+            {lightboxImage && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                onClick={() => setLightboxImage(null)}
+              >
+                <motion.img
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  src={lightboxImage}
+                  alt="Full size image"
+                  className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  onClick={() => setLightboxImage(null)}
+                  className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 border border-border/40 flex items-center justify-center text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Upload progress indicator */}
           {isUploading && (
