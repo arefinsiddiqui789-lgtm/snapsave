@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { useNoteStore } from '@/store/note-store';
-import { formatDateTime, formatTime, formatDate } from '@/types/note';
+import { formatDateTime, formatDate } from '@/types/note';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -11,16 +11,14 @@ import {
   Clock,
   Copy,
   Trash2,
-  Minimize2,
   Maximize2,
   Check,
   Tags,
-  Save,
-  Calendar,
-  Type,
-  AlignLeft,
   Loader2,
   Wand2,
+  ImageIcon,
+  X,
+  AlignLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,6 +39,56 @@ function getReadTime(words: number): string {
   return `${minutes} min read`;
 }
 
+/** Compress image client-side: max 1200px width, quality 0.7 JPEG */
+function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX_WIDTH = 1200;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > MAX_WIDTH) {
+        height = Math.round((height * MAX_WIDTH) / width);
+        width = MAX_WIDTH;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Canvas context not available'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Canvas toBlob failed'));
+            return;
+          }
+          const compressed = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+          resolve(compressed);
+        },
+        'image/jpeg',
+        0.7
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image'));
+    };
+    img.src = url;
+  });
+}
+
 export function Editor() {
   const activeNoteId = useNoteStore((s) => s.activeNoteId);
   const activeNote = useNoteStore((s) => s.notes.find((n) => n.id === s.activeNoteId));
@@ -51,13 +99,18 @@ export function Editor() {
   const setCreateNoteDialogOpen = useNoteStore((s) => s.setCreateNoteDialogOpen);
   const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
   const isAiLoading = useNoteStore((s) => s.isAiLoading);
+  const addImage = useNoteStore((s) => s.addImage);
+  const removeImage = useNoteStore((s) => s.removeImage);
 
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [localTitle, setLocalTitle] = useState('');
   const [localContent, setLocalContent] = useState('');
@@ -215,12 +268,12 @@ export function Editor() {
       }
       const data = await res.json();
       if (data.tags && Array.isArray(data.tags)) {
-        const { addTag } = useNoteStore.getState();
+        const { addTag: addTagAction } = useNoteStore.getState();
         const currentNote = useNoteStore.getState().notes.find((n) => n.id === activeNoteId);
         let added = 0;
         data.tags.forEach((tag: string) => {
           if (currentNote && !currentNote.tags.includes(tag)) {
-            addTag(activeNoteId!, tag);
+            addTagAction(activeNoteId!, tag);
             added++;
           }
         });
@@ -234,6 +287,155 @@ export function Editor() {
       setIsAiLoading(false);
     }
   }, [localContent, activeNoteId, setIsAiLoading, flushAutoSave]);
+
+  /** Upload a file: compress → POST → addImage */
+  const uploadFile = useCallback(
+    async (file: File) => {
+      if (!activeNoteId) {
+        toast.error('Select a note first');
+        return;
+      }
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Only JPG, PNG, GIF, WebP images are allowed');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be under 5MB');
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        // Compress client-side
+        const compressed = await compressImage(file);
+
+        const formData = new FormData();
+        formData.append('file', compressed);
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          toast.error(data.error || 'Upload failed');
+          return;
+        }
+
+        const data = await res.json();
+        if (data.url) {
+          addImage(activeNoteId, data.url);
+          toast.success('Image added');
+        } else {
+          toast.error('Upload failed');
+        }
+      } catch {
+        toast.error('Failed to upload image');
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [activeNoteId, addImage]
+  );
+
+  const handleImageButton = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        uploadFile(file);
+      }
+      // Reset input so same file can be selected again
+      e.target.value = '';
+    },
+    [uploadFile]
+  );
+
+  const handleRemoveImage = useCallback(
+    (imageUrl: string) => {
+      if (!activeNoteId) return;
+      removeImage(activeNoteId, imageUrl);
+      toast.success('Image removed');
+    },
+    [activeNoteId, removeImage]
+  );
+
+  // Paste from clipboard support
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (!activeNoteId) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            uploadFile(file);
+          }
+          break;
+        }
+      }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [activeNoteId, uploadFile]);
+
+  // Drag and drop support
+  useEffect(() => {
+    const editorArea = document.getElementById('editor-area');
+    if (!editorArea) return;
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer?.types.includes('Files')) {
+        setIsDragOver(true);
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Only set to false if we're leaving the editor area entirely
+      const rect = editorArea.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+        setIsDragOver(false);
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        for (const file of files) {
+          if (file.type.startsWith('image/')) {
+            uploadFile(file);
+            break;
+          }
+        }
+      }
+    };
+
+    editorArea.addEventListener('dragover', handleDragOver);
+    editorArea.addEventListener('dragleave', handleDragLeave);
+    editorArea.addEventListener('drop', handleDrop);
+
+    return () => {
+      editorArea.removeEventListener('dragover', handleDragOver);
+      editorArea.removeEventListener('dragleave', handleDragLeave);
+      editorArea.removeEventListener('drop', handleDrop);
+    };
+  }, [uploadFile]);
 
   const wordCount = getWordCount(localContent);
   const charCount = getCharCount(localContent);
@@ -290,6 +492,12 @@ export function Editor() {
               active={activeNote.isHighPriority}
             />
             <div className="w-px h-3.5 bg-border/40 mx-1.5" />
+            <ToolBtn
+              icon={<ImageIcon className="h-3.5 w-3.5" />}
+              onClick={handleImageButton}
+              title="Add Image"
+              disabled={isUploading}
+            />
             <ToolBtn icon={<Copy className="h-3.5 w-3.5" />} onClick={handleCopy} title="Copy" />
             <ToolBtn icon={<Trash2 className="h-3.5 w-3.5" />} onClick={handleDelete} title="Delete" destructive />
             <div className="w-px h-3.5 bg-border/40 mx-1.5" />
@@ -322,10 +530,10 @@ export function Editor() {
                 </motion.span>
               )}
             </AnimatePresence>
-            {isAiLoading && (
+            {(isAiLoading || isUploading) && (
               <span className="flex items-center gap-1.5 text-[11px] text-primary/70 font-medium">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Thinking…
+                {isUploading ? 'Uploading…' : 'Thinking…'}
               </span>
             )}
             <ToolBtn
@@ -337,6 +545,15 @@ export function Editor() {
         </div>
       )}
 
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
       {/* Focus mode bar */}
       {isFocusMode && (
         <div className="flex items-center justify-between px-5 py-2">
@@ -344,7 +561,7 @@ export function Editor() {
             {localTitle || 'Untitled'}
           </span>
           <div className="flex items-center gap-3">
-            {isAiLoading && (
+            {(isAiLoading || isUploading) && (
               <span className="flex items-center gap-1.5 text-[11px] text-primary/70 font-medium">
                 <Loader2 className="h-3 w-3 animate-spin" />
               </span>
@@ -372,7 +589,24 @@ export function Editor() {
       )}
 
       {/* Editor — paper-like, breathing space */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto relative" id="editor-area">
+        {/* Drop zone overlay */}
+        <AnimatePresence>
+          {isDragOver && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 bg-primary/5 border-2 border-dashed border-primary/40 rounded-lg flex items-center justify-center"
+            >
+              <div className="text-center">
+                <ImageIcon className="h-10 w-10 text-primary/50 mx-auto mb-2" />
+                <p className="text-sm font-medium text-primary/70">Drop image here</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className={`mx-auto px-6 py-8 md:px-12 md:py-10 ${isFocusMode ? 'max-w-[640px]' : 'max-w-3xl'}`}>
           {/* Title */}
           <textarea
@@ -443,6 +677,39 @@ export function Editor() {
             </div>
           )}
 
+          {/* Images grid */}
+          {activeNote.images.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+              {activeNote.images.map((imageUrl) => (
+                <div
+                  key={imageUrl}
+                  className="group relative rounded-lg overflow-hidden border border-border/30 bg-secondary/20"
+                >
+                  <img
+                    src={imageUrl}
+                    alt="Note attachment"
+                    className="w-full h-32 object-cover"
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(imageUrl)}
+                    className="absolute top-1 right-1 h-5 w-5 rounded-full bg-background/80 border border-border/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+                    title="Remove image"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload progress indicator */}
+          {isUploading && (
+            <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <Loader2 className="h-4 w-4 animate-spin text-primary/70" />
+              <span className="text-xs text-primary/70 font-medium">Uploading image…</span>
+            </div>
+          )}
+
           {/* Content — generous line height, comfortable reading */}
           <textarea
             ref={contentRef}
@@ -465,6 +732,14 @@ export function Editor() {
               </span>
               <span>{charCount} chars</span>
               <span>{getReadTime(wordCount)}</span>
+            </>
+          )}
+          {activeNote.images.length > 0 && (
+            <>
+              <span className="inline-flex items-center gap-1">
+                <ImageIcon className="h-2.5 w-2.5" />
+                {activeNote.images.length} {activeNote.images.length === 1 ? 'image' : 'images'}
+              </span>
             </>
           )}
         </div>

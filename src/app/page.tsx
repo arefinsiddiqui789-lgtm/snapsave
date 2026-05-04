@@ -442,27 +442,45 @@ function MobileNotesList({ onNoteSelect }: { onNoteSelect: (id: string) => void 
                           {note.content.trim().slice(0, 100)}
                         </p>
                       )}
-                      {note.tags.length > 0 && (
-                        <div className="flex gap-1.5 mt-2 flex-wrap">
-                          {note.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag}
-                              className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${getTagColorClass(tag)}`}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {note.tags.length > 3 && (
-                            <span className="text-[10px] text-muted-foreground">
-                              +{note.tags.length - 3}
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                        {note.tags.length > 0 && (
+                          <>
+                            {note.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${getTagColorClass(tag)}`}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {note.tags.length > 3 && (
+                              <span className="text-[10px] text-muted-foreground">
+                                +{note.tags.length - 3}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
+                        {getRelativeTime(note.updatedAt)}
+                      </span>
+                      {note.images && note.images.length > 0 && (
+                        <div className="relative">
+                          <img
+                            src={note.images[0]}
+                            alt=""
+                            className="w-8 h-8 rounded-md object-cover border border-border/30"
+                          />
+                          {note.images.length > 1 && (
+                            <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] inline-flex items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground px-0.5">
+                              {note.images.length}
                             </span>
                           )}
                         </div>
                       )}
                     </div>
-                    <span className="text-[11px] text-muted-foreground shrink-0 mt-0.5 tabular-nums">
-                      {getRelativeTime(note.updatedAt)}
-                    </span>
                   </div>
                 </button>
               );

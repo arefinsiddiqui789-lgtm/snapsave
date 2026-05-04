@@ -35,6 +35,8 @@ interface NoteState {
   removeTemporary: (id: string) => void;
   addTag: (id: string, tag: string) => void;
   removeTag: (id: string, tag: string) => void;
+  addImage: (id: string, imageUrl: string) => void;
+  removeImage: (id: string, imageUrl: string) => void;
   cleanupExpiredNotes: () => void;
   setSidebarOpen: (open: boolean) => void;
   setRightPanelOpen: (open: boolean) => void;
@@ -204,6 +206,26 @@ export const useNoteStore = create<NoteState>()(
         }));
       },
 
+      addImage: (id, imageUrl) => {
+        set((state) => ({
+          notes: state.notes.map((note) =>
+            note.id === id
+              ? { ...note, images: [...note.images, imageUrl], updatedAt: Date.now() }
+              : note
+          ),
+        }));
+      },
+
+      removeImage: (id, imageUrl) => {
+        set((state) => ({
+          notes: state.notes.map((note) =>
+            note.id === id
+              ? { ...note, images: note.images.filter((url) => url !== imageUrl), updatedAt: Date.now() }
+              : note
+          ),
+        }));
+      },
+
       cleanupExpiredNotes: () => {
         const now = Date.now();
         set((state) => {
@@ -288,7 +310,7 @@ export const useNoteStore = create<NoteState>()(
     }),
     {
       name: 'snapnote-pro-storage',
-      version: 1,
+      version: 2,
       partialize: (state) => ({
         notes: state.notes,
         activeNoteId: state.activeNoteId,
@@ -300,6 +322,17 @@ export const useNoteStore = create<NoteState>()(
             persisted.notes = persisted.notes.map((note: Record<string, unknown>) => {
               const { versions: _v, ...rest } = note;
               return rest;
+            });
+          }
+        }
+        if (version < 2) {
+          // Add `images` field to notes (v1 → v2)
+          if (Array.isArray(persisted.notes)) {
+            persisted.notes = persisted.notes.map((note: Record<string, unknown>) => {
+              if (!note.images || !Array.isArray(note.images)) {
+                return { ...note, images: [] };
+              }
+              return note;
             });
           }
         }

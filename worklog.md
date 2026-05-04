@@ -120,3 +120,52 @@ Stage Summary:
 - Service worker provides offline caching for a native app feel
 - Smart install banner appears on mobile browsers prompting users to install
 - App runs in standalone mode (no browser chrome) when launched from home screen
+
+---
+Task ID: 6
+Agent: Main
+Task: Add image attachment feature for SnapNote Pro
+
+Work Log:
+- Updated `Note` interface in `src/types/note.ts` with `images: string[]` field
+- Updated `createNewNote()` to include `images: []` default
+- Updated Zustand store (`src/store/note-store.ts`):
+  - Added `addImage(id, imageUrl)` action — appends image URL to note's images array
+  - Added `removeImage(id, imageUrl)` action — removes image URL from note's images array
+  - Bumped persist version from 1 to 2
+  - Added migration that adds `images: []` to existing notes that lack the field
+- Created image upload API route (`src/app/api/upload/route.ts`):
+  - Accepts POST with FormData containing a file
+  - Validates file type (jpg, png, gif, webp) and size (max 5MB)
+  - Saves to `public/uploads/` with unique timestamped filename
+  - Creates `public/uploads/` directory if it doesn't exist
+  - Returns URL path `/uploads/filename`
+- Updated Editor component (`src/components/snapnote/editor.tsx`):
+  - Added Image button (ImageIcon) in toolbar between priority divider and Copy button
+  - Added hidden file input triggered by Image button
+  - Implemented client-side image compression using canvas (max 1200px width, JPEG quality 0.7)
+  - Upload handler: compress → POST /api/upload → addImage(noteId, url)
+  - Shows loading spinner during upload in toolbar and as inline progress indicator
+  - Added image display grid between status pills and content textarea (2-3 column responsive grid)
+  - Each image thumbnail has an X button (visible on hover) to remove
+  - Added paste-from-clipboard support: Ctrl+V with image in clipboard auto-uploads
+  - Added drag-and-drop support: drag image onto editor shows drop zone overlay, drops auto-upload
+  - Added image count in bottom bar alongside word/char counts
+- Updated Sidebar component (`src/components/snapnote/sidebar.tsx`):
+  - Shows small ImageIcon (h-2.5 w-2.5) next to note title when note has images
+  - Imported ImageIcon from lucide-react
+- Updated MobileNotesList in page.tsx:
+  - Shows 32x32 rounded thumbnail of first image to the right of note title/content
+  - Shows image count badge (primary-colored circle) if note has more than 1 image
+  - Restructured layout: time and thumbnail stacked vertically on right side
+- All lint checks pass with zero errors
+
+Stage Summary:
+- Users can now attach images to notes via toolbar button, paste, or drag-and-drop
+- Images are compressed client-side before upload (max 1200px, quality 0.7 JPEG)
+- Upload API stores files in public/uploads/ with unique names
+- Images displayed as grid of thumbnails with hover-to-remove X button
+- Sidebar shows image icon indicator for notes with attachments
+- Mobile notes list shows first image thumbnail and count badge
+- Persist migration ensures existing notes get empty images array
+- Upload state shows in toolbar (spinner + "Uploading…") and inline progress

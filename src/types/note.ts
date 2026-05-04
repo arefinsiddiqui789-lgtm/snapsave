@@ -3,6 +3,7 @@ export interface Note {
   title: string;
   content: string;
   tags: string[];
+  images: string[];
   isPinned: boolean;
   isHighPriority: boolean;
   isTemporary: boolean;
@@ -50,6 +51,7 @@ export function createNewNote(id: string): Note {
     title: '',
     content: '',
     tags: [],
+    images: [],
     isPinned: false,
     isHighPriority: false,
     isTemporary: false,

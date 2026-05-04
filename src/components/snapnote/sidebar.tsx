@@ -15,6 +15,7 @@ import {
   Plus,
   PanelLeftClose,
   PanelLeft,
+  ImageIcon,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -209,6 +210,9 @@ export function Sidebar() {
                           }`}>
                             {title}
                           </span>
+                          {note.images && note.images.length > 0 && (
+                            <ImageIcon className="h-2.5 w-2.5 text-muted-foreground/60 shrink-0" />
+                          )}
                         </div>
                         {note.tags.length > 0 && (
                           <div className="flex gap-1 mt-1.5 flex-wrap">
