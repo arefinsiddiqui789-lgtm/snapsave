@@ -9,6 +9,7 @@ import { RightPanel } from '@/components/snapnote/right-panel';
 import { CreateNoteDialog } from '@/components/snapnote/create-note-dialog';
 import { AuthScreen } from '@/components/snapnote/auth-screen';
 import { PwaInstallBanner } from '@/components/snapnote/pwa-install-banner';
+import { BkashDialog } from '@/components/snapnote/bkash-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -55,6 +56,8 @@ export default function Home() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const bkashDialogOpen = useNoteStore((s) => s.bkashDialogOpen);
+  const setBkashDialogOpen = useNoteStore((s) => s.setBkashDialogOpen);
 
   const [authReady, setAuthReady] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -258,6 +261,12 @@ export default function Home() {
 
         {/* Create Note Dialog */}
         <CreateNoteDialog />
+
+        {/* bKash Dialog */}
+        <BkashDialog
+          open={bkashDialogOpen}
+          onOpenChange={setBkashDialogOpen}
+        />
       </div>
     );
   }
@@ -788,15 +797,13 @@ function MobileDetailsPanel() {
             <Heart className="h-3.5 w-3.5 inline mr-1" />
             Support
           </p>
-          <a
-            href="https://buymeacoffee.com/arefinsiddiqui"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/30 text-sm font-semibold text-amber-700 dark:text-amber-400 active:scale-95 transition-all"
+          <button
+            onClick={() => setBkashDialogOpen(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#E2136E]/8 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-sm font-semibold text-[#E2136E] dark:text-[#E2136E] active:scale-95 transition-all"
           >
             <Coffee className="h-4 w-4" />
             Buy Me a Coffee
-          </a>
+          </button>
         </div>
 
         {/* Logout */}

@@ -18,6 +18,7 @@ interface NoteState {
   rightPanelOpen: boolean;
   isAiLoading: boolean;
   createNoteDialogOpen: boolean;
+  bkashDialogOpen: boolean;
 
   // Actions
   createNote: (title?: string, content?: string) => string;
@@ -39,6 +40,7 @@ interface NoteState {
   setRightPanelOpen: (open: boolean) => void;
   setIsAiLoading: (loading: boolean) => void;
   setCreateNoteDialogOpen: (open: boolean) => void;
+  setBkashDialogOpen: (open: boolean) => void;
   getActiveNote: () => Note | undefined;
   getFilteredNotes: () => Note[];
   getAllTags: () => string[];
@@ -63,6 +65,7 @@ export const useNoteStore = create<NoteState>()(
       rightPanelOpen: true,
       isAiLoading: false,
       createNoteDialogOpen: false,
+      bkashDialogOpen: false,
 
       createNote: (title?: string, content?: string) => {
         const id = generateId();
@@ -220,6 +223,7 @@ export const useNoteStore = create<NoteState>()(
       setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
       setIsAiLoading: (loading) => set({ isAiLoading: loading }),
       setCreateNoteDialogOpen: (open) => set({ createNoteDialogOpen: open }),
+      setBkashDialogOpen: (open) => set({ bkashDialogOpen: open }),
 
       getActiveNote: () => {
         const state = get();
