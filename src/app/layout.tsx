@@ -97,7 +97,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
-          <Toaster position="bottom-right" richColors />
+          <Toaster position="bottom-right" richColors duration={2000} />
           <Analytics />
         </ThemeProvider>
         {/* Service Worker Registration */}
