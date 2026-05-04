@@ -7,36 +7,29 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Copy, Check, Send } from 'lucide-react';
+import { Copy, Check, Send, ExternalLink } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
 const BKASH_NUMBER = '01701659879';
 
-// bKash deep link: opens the bKash app directly to Send Money with number pre-filled
-// Works on Android & iOS if bKash app is installed
-const BKASH_SEND_MONEY_URL = `bkash://send_money?phone=${BKASH_NUMBER}`;
-// Fallback web URL for users without the app
-const BKASH_WEB_URL = 'https://www.bkash.com';
+// bKash app package name (Android)
+const BKASH_ANDROID_PACKAGE = 'com.bKash.customerapp';
+// bKash App Store ID (iOS)
+const BKASH_IOS_APP_ID = '1351183172';
 
 interface BkashDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(BKASH_NUMBER);
-      setCopied(true);
-      toast.success('bKash number copied!');
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
+function copyToClipboard(text: string): Promise<boolean> {
+  return navigator.clipboard.writeText(text)
+    .then(() => true)
+    .catch(() => {
       // Fallback for older mobile browsers
       const textarea = document.createElement('textarea');
-      textarea.value = BKASH_NUMBER;
+      textarea.value = text;
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
       textarea.style.left = '-9999px';
@@ -45,36 +38,70 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
       textarea.select();
       try {
         document.execCommand('copy');
-        setCopied(true);
-        toast.success('bKash number copied!');
-        setTimeout(() => setCopied(false), 2000);
+        document.body.removeChild(textarea);
+        return true;
       } catch {
-        toast.error('Failed to copy. Please copy manually.');
+        document.body.removeChild(textarea);
+        return false;
       }
-      document.body.removeChild(textarea);
+    });
+}
+
+export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    const success = await copyToClipboard(BKASH_NUMBER);
+    if (success) {
+      setCopied(true);
+      toast.success('bKash number copied!');
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      toast.error('Failed to copy. Please select and copy manually.');
     }
   }, []);
 
-  const handleSendMoney = useCallback(() => {
-    // Try to open bKash app with deep link
-    const startTime = Date.now();
+  const handleSendMoney = useCallback(async () => {
+    // Step 1: Auto-copy number to clipboard first
+    const copiedOk = await copyToClipboard(BKASH_NUMBER);
+    if (copiedOk) {
+      toast.success('Number copied! Opening bKash...');
+    } else {
+      toast('Opening bKash — number is shown above to copy');
+    }
 
-    // Attempt to open the bKash app
-    window.location.href = BKASH_SEND_MONEY_URL;
+    // Step 2: Open bKash app
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
 
-    // If the app didn't open after 1.5s, redirect to web version
+    if (isAndroid) {
+      // Android: Use intent URL to open bKash app
+      // If app is installed -> opens the app
+      // If app is NOT installed -> falls back to Play Store
+      const intentUrl = `intent://#Intent;package=${BKASH_ANDROID_PACKAGE};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${BKASH_ANDROID_PACKAGE};end`;
+      window.location.href = intentUrl;
+    } else if (isIOS) {
+      // iOS: Try opening the app, fallback to App Store
+      // Use a hidden iframe trick to avoid Safari's "Invalid Address" alert
+      const appUrl = 'bkash://';
+      const storeUrl = `https://apps.apple.com/app/id${BKASH_IOS_APP_ID}`;
+
+      // Try to open the app
+      window.location.href = appUrl;
+
+      // If app didn't open after 1.5s, go to App Store
+      setTimeout(() => {
+        window.location.href = storeUrl;
+      }, 1500);
+    } else {
+      // Desktop: open Play Store page
+      window.open(`https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`, '_blank');
+    }
+
+    // Close the sheet after a short delay
     setTimeout(() => {
-      // If the page is still visible, the app didn't open
-      if (Date.now() - startTime < 2000) {
-        toast.error('bKash app not found. Opening web version...');
-        setTimeout(() => {
-          window.open(BKASH_WEB_URL, '_blank');
-        }, 500);
-      }
-    }, 1500);
-
-    // Close the sheet
-    onOpenChange(false);
+      onOpenChange(false);
+    }, 300);
   }, [onOpenChange]);
 
   return (
@@ -154,13 +181,36 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
           <div className="w-full bg-secondary/30 rounded-2xl p-4 space-y-2">
             <p className="text-xs font-semibold text-foreground">How to send:</p>
             <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
-              <li>Tap <strong>Send Money</strong> to open bKash app directly</li>
-              <li>Your number will be auto-filled — just enter the amount</li>
-              <li>Complete the transaction with your PIN</li>
+              <li>Tap <strong>Send Money</strong> — number auto-copied & bKash opens</li>
+              <li>In bKash, go to <strong>Send Money</strong></li>
+              <li><strong>Long-press & paste</strong> the number in the &quot;To&quot; field</li>
+              <li>Enter amount, confirm with PIN — done!</li>
             </ol>
             <p className="text-[10px] text-muted-foreground/70 mt-2">
-              Or copy the number and send manually from your bKash app
+              The number is automatically copied to your clipboard
             </p>
+          </div>
+
+          {/* App download links */}
+          <div className="w-full flex gap-3">
+            <a
+              href={`https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-secondary/30 border border-border/30 text-xs font-medium text-muted-foreground active:scale-95 transition-all"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Get on Android
+            </a>
+            <a
+              href={`https://apps.apple.com/app/id${BKASH_IOS_APP_ID}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-secondary/30 border border-border/30 text-xs font-medium text-muted-foreground active:scale-95 transition-all"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Get on iOS
+            </a>
           </div>
 
           {/* Thank you */}
