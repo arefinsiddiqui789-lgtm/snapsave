@@ -3,6 +3,7 @@ import { Space_Grotesk, Montserrat } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/react";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-title",
@@ -97,6 +98,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster position="bottom-right" richColors />
+          <Analytics />
         </ThemeProvider>
         {/* Service Worker Registration */}
         <script
