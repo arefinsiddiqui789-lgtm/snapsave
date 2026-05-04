@@ -135,26 +135,15 @@ export default function Home() {
       <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
         {/* Status bar area — thin, app-like */}
         <div className="flex items-center justify-between px-4 pt-2 pb-1 bg-background/95 backdrop-blur-md z-20 safe-top">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCreateNoteDialogOpen(true)}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform shadow-sm"
-              title="New Note"
-            >
-              <Plus className="h-4.5 w-4.5" />
-            </button>
-            <h1 className="text-[15px] font-bold font-[family-name:var(--font-title)] text-foreground">
-              SnapNote Pro
-            </h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={toggleTheme}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-full text-muted-foreground active:text-foreground active:bg-secondary/60 transition-colors"
-            >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-          </div>
+          <h1 className="text-[15px] font-bold font-[family-name:var(--font-title)] text-foreground">
+            SnapNote Pro
+          </h1>
+          <button
+            onClick={toggleTheme}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-full text-muted-foreground active:text-foreground active:bg-secondary/60 transition-colors"
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
         </div>
 
         {/* Main content area — full screen between status bar and bottom nav */}
@@ -208,6 +197,16 @@ export default function Home() {
         <div className="bg-background/95 backdrop-blur-md border-t border-border/50 safe-bottom z-20">
           <div className="flex items-center justify-around px-2 pt-1.5 pb-1">
             <button
+              onClick={() => setCreateNoteDialogOpen(true)}
+              className="flex flex-col items-center gap-0.5 py-1.5 px-4 rounded-xl text-primary active:scale-90 transition-all"
+            >
+              <div className="h-7 w-7 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                <Plus className="h-4 w-4" />
+              </div>
+              <span className="text-[10px] font-semibold">New</span>
+            </button>
+
+            <button
               onClick={() => setMobileTab('notes')}
               className={`flex flex-col items-center gap-0.5 py-1.5 px-4 rounded-xl transition-colors ${
                 mobileTab === 'notes'
@@ -249,8 +248,8 @@ export default function Home() {
               className="absolute h-0.5 rounded-full bg-primary"
               initial={false}
               animate={{
-                left: mobileTab === 'notes' ? '0%' : mobileTab === 'editor' ? '33.33%' : '66.66%',
-                width: '33.33%',
+                left: mobileTab === 'notes' ? '25%' : mobileTab === 'editor' ? '50%' : '75%',
+                width: '25%',
               }}
               transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
             />
