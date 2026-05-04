@@ -195,10 +195,10 @@ export default function Home() {
           </AnimatePresence>
         </div>
 
-        {/* Floating Action Button — New Note */}
+        {/* Floating Action Button — New Note (left side for easy thumb reach) */}
         <button
           onClick={() => setCreateNoteDialogOpen(true)}
-          className="absolute right-5 bottom-[76px] z-30 h-14 w-14 rounded-full bg-primary shadow-lg shadow-primary/25 active:scale-90 transition-transform flex items-center justify-center"
+          className="absolute left-5 bottom-[76px] z-30 h-14 w-14 rounded-full bg-primary shadow-lg shadow-primary/25 active:scale-90 transition-transform flex items-center justify-center"
         >
           <Plus className="h-6 w-6 text-primary-foreground" />
         </button>
