@@ -183,6 +183,9 @@ function BkashContent({ onOpenChange }: { onOpenChange: (open: boolean) => void 
       <p className="text-xs text-muted-foreground text-center italic">
         Every small contribution means a lot! ❤️
       </p>
+      <p className="text-[11px] text-muted-foreground text-center leading-relaxed font-medium">
+        Your support helps me bring SnapNote Pro to the Google Play Store &amp; Apple App Store :)
+      </p>
     </div>
   );
 }
