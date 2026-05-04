@@ -811,60 +811,46 @@ function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: ()
     });
   }, []);
 
-  // Download image — async Blob conversion to avoid freezing on mobile with large base64
-  const handleDownload = useCallback(() => {
+  // Download image — use fetch() for native async blob conversion (no main-thread blocking)
+  const [isDownloading, setIsDownloading] = useState(false);
+  const handleDownload = useCallback(async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
     setShowActions(false);
-    // Yield to browser first so UI updates, then do heavy work in next frame
-    setTimeout(() => {
+    try {
+      // fetch() on a data URL is handled natively by the browser — no atob(), no main-thread blocking
+      const response = await fetch(src);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `snapnote-image-${Date.now()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      toast.success('Download started');
+    } catch {
+      // Fallback: open in new tab so user can save manually
       try {
-        // Convert base64 data URL to Blob for memory-efficient download
-        const dataParts = src.split(',');
-        const mimeMatch = dataParts[0].match(/:(.*?);/);
-        const mimeString = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-        const byteString = atob(dataParts[1]);
-
-        // Process in chunks to avoid blocking
-        const chunkSize = 8192;
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let offset = 0; offset < byteString.length; offset += chunkSize) {
-          const end = Math.min(offset + chunkSize, byteString.length);
-          for (let i = offset; i < end; i++) {
-            ia[i] = byteString.charCodeAt(i);
-          }
-        }
-
-        const blob = new Blob([ab], { type: mimeString });
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = `snapnote-image-${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        // Revoke after a short delay to ensure download starts
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
-        toast.success('Download started');
+        window.open(src, '_blank');
+        toast.success('Image opened — long-press to save');
       } catch {
-        // Fallback: open in new tab so user can save manually
-        try {
-          window.open(src, '_blank');
-          toast.success('Image opened — long-press to save');
-        } catch {
-          toast.error('Download failed');
-        }
+        toast.error('Download failed');
       }
-    }, 50);
-  }, [src]);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [src, isDownloading]);
 
-  // Confirm delete
+  // Confirm delete — close UI first, then delete with a small delay so browser can paint
   const handleConfirmDelete = useCallback(() => {
     setShowActions(false);
-    // Use requestAnimationFrame to let the UI update before heavy state change
-    requestAnimationFrame(() => {
+    onClose();
+    // Yield to browser to paint the close animation, then delete (which triggers heavy localStorage write)
+    setTimeout(() => {
       onDelete();
-      onClose();
-    });
+    }, 100);
   }, [onDelete, onClose]);
 
   // Clear long press timer on unmount
@@ -1081,12 +1067,17 @@ function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: ()
         <button
           onClick={(e) => { e.stopPropagation(); handleDownload(); }}
           onTouchEnd={(e) => e.stopPropagation()}
-          className="h-12 w-12 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white active:bg-white/40 transition-colors"
-          title="Download image"
+          disabled={isDownloading}
+          className="h-12 w-12 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white active:bg-white/40 transition-colors disabled:opacity-50"
+          title={isDownloading ? 'Downloading…' : 'Download image'}
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
+          {isDownloading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          )}
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); setShowActions(true); }}
@@ -1164,12 +1155,17 @@ function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: ()
               <div className="space-y-2">
                 <button
                   onClick={handleDownload}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold text-sm active:scale-[0.97] transition-transform"
+                  disabled={isDownloading}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold text-sm active:scale-[0.97] transition-transform disabled:opacity-50"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download Image
+                  {isDownloading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
+                  {isDownloading ? 'Downloading…' : 'Download Image'}
                 </button>
                 <button
                   onClick={handleConfirmDelete}

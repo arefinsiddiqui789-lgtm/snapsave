@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import {
   Note,
   FilterType,
@@ -46,6 +46,39 @@ interface NoteState {
   getActiveNote: () => Note | undefined;
   getFilteredNotes: () => Note[];
   getAllTags: () => string[];
+}
+
+/**
+ * Debounced localStorage wrapper.
+ * Instead of writing to localStorage synchronously on every Zustand state change
+ * (which freezes the phone when images are stored as base64), we debounce writes
+ * so rapid changes collapse into a single write after 300ms of inactivity.
+ */
+function createDebouncedStorage(): StateStorage {
+  let writeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  return {
+    getItem: (name: string): string | null => {
+      return localStorage.getItem(name);
+    },
+    setItem: (name: string, value: string): void => {
+      // Cancel any pending write
+      if (writeTimer) clearTimeout(writeTimer);
+      // Debounce: wait 300ms before actually writing to localStorage
+      writeTimer = setTimeout(() => {
+        try {
+          localStorage.setItem(name, value);
+        } catch {
+          console.warn('localStorage write failed — storage may be full');
+        }
+        writeTimer = null;
+      }, 300);
+    },
+    removeItem: (name: string): void => {
+      if (writeTimer) clearTimeout(writeTimer);
+      localStorage.removeItem(name);
+    },
+  };
 }
 
 let noteIdCounter = 0;
@@ -311,11 +344,13 @@ export const useNoteStore = create<NoteState>()(
     {
       name: 'snapnote-pro-storage',
       version: 2,
+      storage: createJSONStorage(() => createDebouncedStorage()),
       partialize: (state) => ({
         notes: state.notes,
         activeNoteId: state.activeNoteId,
       }),
-      migrate: (persisted: Record<string, unknown>, version: number) => {
+      migrate: (persistedState: unknown, version: number) => {
+        const persisted = persistedState as Record<string, unknown>;
         if (version === 0) {
           // Remove old `versions` field from notes (v0 → v1)
           if (Array.isArray(persisted.notes)) {
@@ -336,7 +371,7 @@ export const useNoteStore = create<NoteState>()(
             });
           }
         }
-        return persisted as NoteState;
+        return persisted as unknown as NoteState;
       },
     }
   )
