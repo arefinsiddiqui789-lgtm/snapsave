@@ -497,6 +497,7 @@ function MobileDetailsPanel() {
   const updateNote = useNoteStore((s) => s.updateNote);
   const isAiLoading = useNoteStore((s) => s.isAiLoading);
   const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
+  const setBkashDialogOpen = useNoteStore((s) => s.setBkashDialogOpen);
   const logout = useAuthStore((s) => s.logout);
 
   const [newTag, setNewTag] = useState('');
