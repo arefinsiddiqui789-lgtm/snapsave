@@ -23,6 +23,7 @@ import {
   Loader2,
   Settings2,
   Check,
+  Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -79,6 +80,7 @@ export function RightPanel() {
   const setRightPanelOpen = useNoteStore((s) => s.setRightPanelOpen);
   const isAiLoading = useNoteStore((s) => s.isAiLoading);
   const setIsAiLoading = useNoteStore((s) => s.setIsAiLoading);
+  const setBkashDialogOpen = useNoteStore((s) => s.setBkashDialogOpen);
   const [newTag, setNewTag] = useState('');
   const [showCustomTimer, setShowCustomTimer] = useState(false);
   const [customHours, setCustomHours] = useState('');
@@ -481,6 +483,21 @@ export function RightPanel() {
                 Auto-Tag
               </button>
             </div>
+          </div>
+
+          {/* Support */}
+          <div className="space-y-2.5 pt-2 border-t border-border/30">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Heart className="h-3 w-3 inline mr-1" />
+              Support
+            </p>
+            <button
+              onClick={() => setBkashDialogOpen(true)}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-[#E2136E]/8 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[11px] font-semibold text-[#E2136E] hover:bg-[#E2136E]/15 transition-all"
+            >
+              <Heart className="h-3.5 w-3.5" />
+              Buy Me a Coffee
+            </button>
           </div>
 
 
