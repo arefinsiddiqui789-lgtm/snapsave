@@ -757,7 +757,7 @@ export function Editor() {
   );
 }
 
-/** Zoomable Lightbox — scroll/pinch to zoom, drag to pan, double-click to reset */
+/** Zoomable Lightbox — scroll/pinch to zoom, drag to pan, double-tap to reset */
 function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -765,13 +765,128 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const lastTouchDist = useRef<number | null>(null);
+  const lastTapTime = useRef<number>(0);
 
   const MIN_SCALE = 1;
   const MAX_SCALE = 8;
 
+  // Use refs for values needed in non-React event handlers
+  const scaleRef = useRef(scale);
+  const positionRef = useRef(position);
+  const isDraggingRef = useRef(isDragging);
+
+  // Sync state to refs (must be in effect per lint rules)
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+  useEffect(() => {
+    isDraggingRef.current = isDragging;
+  }, [isDragging]);
+
   const resetView = useCallback(() => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
+  }, []);
+
+  const zoomIn = useCallback(() => {
+    setScale((prev) => Math.min(MAX_SCALE, prev * 1.5));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setScale((prev) => {
+      const next = prev / 1.5;
+      if (next <= MIN_SCALE) {
+        setPosition({ x: 0, y: 0 });
+      }
+      return Math.max(MIN_SCALE, next);
+    });
+  }, []);
+
+  // Attach non-passive touch events for mobile pinch zoom + drag
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        // Two fingers = pinch zoom
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastTouchDist.current = Math.sqrt(dx * dx + dy * dy);
+      } else if (e.touches.length === 1) {
+        // One finger: check for double-tap, or start drag
+        const now = Date.now();
+        const timeSince = now - lastTapTime.current;
+        lastTapTime.current = now;
+
+        if (timeSince < 300 && timeSince > 0) {
+          // Double tap detected
+          e.preventDefault();
+          if (scaleRef.current > 1) {
+            setScale(1);
+            setPosition({ x: 0, y: 0 });
+          } else {
+            setScale(3);
+          }
+          return;
+        }
+
+        if (scaleRef.current > 1) {
+          dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          posStart.current = { ...positionRef.current };
+          setIsDragging(true);
+        }
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && lastTouchDist.current !== null) {
+        // Pinch zoom
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const delta = dist / lastTouchDist.current;
+        lastTouchDist.current = dist;
+        setScale((prev) => {
+          const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * delta));
+          if (next <= MIN_SCALE) {
+            setPosition({ x: 0, y: 0 });
+          }
+          return next;
+        });
+      } else if (e.touches.length === 1 && isDraggingRef.current) {
+        // Pan drag
+        e.preventDefault();
+        const dx = e.touches[0].clientX - dragStart.current.x;
+        const dy = e.touches[0].clientY - dragStart.current.y;
+        setPosition({
+          x: posStart.current.x + dx,
+          y: posStart.current.y + dy,
+        });
+      }
+    };
+
+    const handleTouchEnd = () => {
+      lastTouchDist.current = null;
+      setIsDragging(false);
+    };
+
+    // Must use { passive: false } so preventDefault() works on mobile
+    el.addEventListener('touchstart', handleTouchStart, { passive: false });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
   }, []);
 
   // Handle wheel zoom (desktop)
@@ -810,7 +925,7 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
     setIsDragging(false);
   }, []);
 
-  // Double click to reset
+  // Double click (desktop)
   const handleDoubleClick = useCallback(() => {
     if (scale > 1) {
       resetView();
@@ -818,74 +933,6 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
       setScale(3);
     }
   }, [scale, resetView]);
-
-  // Touch pinch zoom (mobile)
-  const lastTouchDist = useRef<number | null>(null);
-  const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      lastTouchDist.current = Math.sqrt(dx * dx + dy * dy);
-      lastTouchCenter.current = {
-        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
-      };
-    } else if (e.touches.length === 1 && scale > 1) {
-      dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      posStart.current = { ...position };
-      setIsDragging(true);
-    }
-  }, [scale, position]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastTouchDist.current) {
-      e.preventDefault();
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const delta = dist / lastTouchDist.current;
-      setScale((prev) => {
-        const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * delta));
-        if (next <= MIN_SCALE) {
-          setPosition({ x: 0, y: 0 });
-        }
-        return next;
-      });
-      lastTouchDist.current = dist;
-    } else if (e.touches.length === 1 && isDragging) {
-      const dx = e.touches[0].clientX - dragStart.current.x;
-      const dy = e.touches[0].clientY - dragStart.current.y;
-      setPosition({
-        x: posStart.current.x + dx,
-        y: posStart.current.y + dy,
-      });
-    }
-  }, [isDragging]);
-
-  const handleTouchEnd = useCallback(() => {
-    lastTouchDist.current = null;
-    lastTouchCenter.current = null;
-    setIsDragging(false);
-  }, []);
-
-  // Zoom buttons
-  const zoomIn = useCallback(() => {
-    setScale((prev) => Math.min(MAX_SCALE, prev * 1.5));
-  }, []);
-
-  const zoomOut = useCallback(() => {
-    setScale((prev) => {
-      const next = prev / 1.5;
-      if (next <= MIN_SCALE) {
-        setPosition({ x: 0, y: 0 });
-      }
-      return Math.max(MIN_SCALE, next);
-    });
-  }, []);
-
-  // Reset position when zoom goes back to 1 — handled in zoomOut and setScale calls
 
   return (
     <motion.div
@@ -900,26 +947,17 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
     >
       {/* Interactive image wrapper — handles all zoom/pan gestures */}
       <div
+        ref={wrapperRef}
         className="flex items-center justify-center overflow-hidden"
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', touchAction: 'none' }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onDoubleClick={handleDoubleClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
-        <motion.img
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{
-            scale: 1,
-            opacity: 1,
-          }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ duration: 0.2 }}
+        <img
           src={src}
           alt="Full size image"
           className="max-w-[95vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
@@ -937,43 +975,47 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white hover:bg-destructive hover:text-white transition-colors z-10"
+        className="absolute top-4 right-4 h-12 w-12 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white active:bg-white/40 transition-colors z-10"
       >
-        <X className="h-5 w-5" />
+        <X className="h-6 w-6" />
       </button>
 
-      {/* Zoom controls */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-1.5 z-10">
+      {/* Zoom controls — mobile-friendly large buttons */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 backdrop-blur-md rounded-full px-4 py-2 z-10">
         <button
           onClick={zoomOut}
           disabled={scale <= MIN_SCALE}
-          className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg font-bold"
+          className="h-10 w-10 rounded-full flex items-center justify-center text-white active:bg-white/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xl font-bold"
         >
           −
         </button>
-        <span className="text-white text-xs font-medium min-w-[48px] text-center tabular-nums">
+        <span className="text-white text-sm font-medium min-w-[52px] text-center tabular-nums">
           {Math.round(scale * 100)}%
         </span>
         <button
           onClick={zoomIn}
           disabled={scale >= MAX_SCALE}
-          className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg font-bold"
+          className="h-10 w-10 rounded-full flex items-center justify-center text-white active:bg-white/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xl font-bold"
         >
           +
         </button>
-        <div className="w-px h-4 bg-white/30 mx-1" />
+        <div className="w-px h-5 bg-white/30 mx-1" />
         <button
           onClick={resetView}
-          className="h-8 px-3 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors text-xs font-medium"
+          className="h-10 px-4 rounded-full flex items-center justify-center text-white active:bg-white/30 transition-colors text-sm font-medium"
         >
           Reset
         </button>
       </div>
 
-      {/* Zoom hint */}
-      <div className="absolute top-4 left-4 text-white/40 text-[10px] leading-relaxed z-10">
+      {/* Zoom hint — different for mobile vs desktop */}
+      <div className="absolute top-4 left-4 text-white/40 text-[11px] leading-relaxed z-10 hidden sm:block">
         <p>Scroll to zoom · Drag to pan</p>
         <p>Double-click to zoom 3×</p>
+      </div>
+      <div className="absolute top-4 left-4 text-white/40 text-[11px] leading-relaxed z-10 sm:hidden">
+        <p>Pinch to zoom · Drag to pan</p>
+        <p>Double-tap to zoom 3×</p>
       </div>
     </motion.div>
   );
