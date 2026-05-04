@@ -7,7 +7,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Copy, Check, Phone, ExternalLink } from 'lucide-react';
+import { Copy, Check, ExternalLink } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
@@ -60,19 +60,6 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
       toast.error('Failed to copy. Please select and copy manually.');
     }
   }, []);
-
-  const handleDialUSSD = useCallback(async () => {
-    // Auto-copy number first
-    await copyToClipboard(BKASH_NUMBER);
-    // USSD code for bKash send money: *247*1*NUMBER#
-    // The # must be URL-encoded as %23
-    const ussdCode = `*247*1*${BKASH_NUMBER}%23`;
-    window.location.href = `tel:${ussdCode}`;
-    toast.success('Number copied! Dialing bKash USSD...');
-    setTimeout(() => {
-      onOpenChange(false);
-    }, 500);
-  }, [onOpenChange]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -137,14 +124,6 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
               )}
             </button>
 
-            {/* Dial USSD Button — works on any phone */}
-            <button
-              onClick={handleDialUSSD}
-              className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 bg-[#E2136E]/10 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[#E2136E]"
-            >
-              <Phone className="h-5 w-5" />
-              Dial *247# (USSD)
-            </button>
           </div>
 
           {/* Instructions */}
@@ -156,9 +135,7 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
               <li><strong>Long-press & paste</strong> the number in the &quot;To&quot; field</li>
               <li>Enter amount, confirm with PIN — done!</li>
             </ol>
-            <p className="text-[10px] text-muted-foreground/70 mt-2">
-              Or tap <strong>Dial *247#</strong> to use USSD on any phone
-            </p>
+
           </div>
 
           {/* App download links */}
