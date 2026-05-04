@@ -7,8 +7,8 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Copy, Check, Send, ExternalLink } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { Copy, Check, Send, Phone, ExternalLink, Smartphone } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 
 const BKASH_NUMBER = '01701659879';
@@ -49,6 +49,7 @@ function copyToClipboard(text: string): Promise<boolean> {
 
 export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
   const [copied, setCopied] = useState(false);
+  const intentLinkRef = useRef<HTMLAnchorElement>(null);
 
   const handleCopy = useCallback(async () => {
     const success = await copyToClipboard(BKASH_NUMBER);
@@ -63,45 +64,38 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
 
   const handleSendMoney = useCallback(async () => {
     // Step 1: Auto-copy number to clipboard first
-    const copiedOk = await copyToClipboard(BKASH_NUMBER);
-    if (copiedOk) {
-      toast.success('Number copied! Opening bKash...');
-    } else {
-      toast('Opening bKash — number is shown above to copy');
-    }
+    await copyToClipboard(BKASH_NUMBER);
 
-    // Step 2: Open bKash app
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isAndroid = /Android/.test(navigator.userAgent);
 
     if (isAndroid) {
-      // Android: Use intent URL to open bKash app
-      // If app is installed -> opens the app
-      // If app is NOT installed -> falls back to Play Store
-      const intentUrl = `intent://#Intent;package=${BKASH_ANDROID_PACKAGE};S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3D${BKASH_ANDROID_PACKAGE};end`;
-      window.location.href = intentUrl;
-    } else if (isIOS) {
-      // iOS: Try opening the app, fallback to App Store
-      // Use a hidden iframe trick to avoid Safari's "Invalid Address" alert
-      const appUrl = 'bkash://';
-      const storeUrl = `https://apps.apple.com/app/id${BKASH_IOS_APP_ID}`;
-
-      // Try to open the app
-      window.location.href = appUrl;
-
-      // If app didn't open after 1.5s, go to App Store
-      setTimeout(() => {
-        window.location.href = storeUrl;
-      }, 1500);
+      // Strategy: Use a hidden <a> tag with intent:// URL and click it
+      // This is more reliable than window.location.href
+      if (intentLinkRef.current) {
+        intentLinkRef.current.click();
+      }
     } else {
-      // Desktop: open Play Store page
-      window.open(`https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`, '_blank');
+      // iOS / other: open bKash website (may prompt to open app)
+      window.open('https://www.bkash.com', '_blank');
     }
 
-    // Close the sheet after a short delay
+    toast.success('Number copied! Opening bKash...');
     setTimeout(() => {
       onOpenChange(false);
-    }, 300);
+    }, 500);
+  }, [onOpenChange]);
+
+  const handleDialUSSD = useCallback(async () => {
+    // Auto-copy number first
+    await copyToClipboard(BKASH_NUMBER);
+    // USSD code for bKash send money: *247*1*NUMBER#
+    // The # must be URL-encoded as %23
+    const ussdCode = `*247*1*${BKASH_NUMBER}%23`;
+    window.location.href = `tel:${ussdCode}`;
+    toast.success('Number copied! Dialing bKash USSD...');
+    setTimeout(() => {
+      onOpenChange(false);
+    }, 500);
   }, [onOpenChange]);
 
   return (
@@ -110,6 +104,19 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
         side="bottom"
         className="rounded-t-3xl max-h-[85vh] overflow-auto px-0 pt-0 pb-8"
       >
+        {/* Hidden intent link for Android - more reliable than window.location.href */}
+        <a
+          ref={intentLinkRef}
+          href={`intent://#Intent;package=${BKASH_ANDROID_PACKAGE};S.browser_fallback_url=https%3A%2F%2Fwww.bkash.com;end`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ position: 'fixed', left: '-9999px', top: '-9999px', opacity: 0 }}
+          aria-hidden="true"
+          tabIndex={-1}
+        >
+          Open bKash
+        </a>
+
         {/* Drag handle for mobile */}
         <div className="flex justify-center pt-3 pb-2">
           <div className="h-1.5 w-12 rounded-full bg-muted-foreground/20" />
@@ -145,28 +152,19 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
 
           {/* Action Buttons */}
           <div className="w-full space-y-3">
-            {/* Send Money Button — primary action */}
-            <button
-              onClick={handleSendMoney}
-              className="w-full flex items-center justify-center gap-2.5 px-4 py-4 rounded-2xl text-base font-bold transition-all active:scale-95 bg-[#E2136E] text-white shadow-lg shadow-[#E2136E]/30"
-            >
-              <Send className="h-5 w-5" />
-              Send Money
-            </button>
-
-            {/* Copy Number Button — secondary action */}
+            {/* Copy Number Button — PRIMARY action (most reliable) */}
             <button
               onClick={handleCopy}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${
+              className={`w-full flex items-center justify-center gap-2.5 px-4 py-4 rounded-2xl text-base font-bold transition-all active:scale-95 ${
                 copied
-                  ? 'bg-green-50 dark:bg-green-900/15 border border-green-200 dark:border-green-800/30 text-green-600 dark:text-green-400'
-                  : 'bg-[#E2136E]/10 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[#E2136E]'
+                  ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
+                  : 'bg-[#E2136E] text-white shadow-lg shadow-[#E2136E]/30'
               }`}
             >
               {copied ? (
                 <>
                   <Check className="h-5 w-5" />
-                  Copied!
+                  Number Copied!
                 </>
               ) : (
                 <>
@@ -175,19 +173,38 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
                 </>
               )}
             </button>
+
+            {/* Open bKash App Button — uses intent on Android */}
+            <button
+              onClick={handleSendMoney}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 bg-[#E2136E]/10 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[#E2136E]"
+            >
+              <Smartphone className="h-5 w-5" />
+              Open bKash App
+            </button>
+
+            {/* Dial USSD Button — works on any phone */}
+            <button
+              onClick={handleDialUSSD}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 bg-[#E2136E]/10 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[#E2136E]"
+            >
+              <Phone className="h-5 w-5" />
+              Dial *247# (USSD)
+            </button>
           </div>
 
           {/* Instructions */}
           <div className="w-full bg-secondary/30 rounded-2xl p-4 space-y-2">
-            <p className="text-xs font-semibold text-foreground">How to send:</p>
+            <p className="text-xs font-semibold text-foreground">How to send money:</p>
             <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
-              <li>Tap <strong>Send Money</strong> — number auto-copied & bKash opens</li>
-              <li>In bKash, go to <strong>Send Money</strong></li>
+              <li>Tap <strong>Copy Number</strong> — number saved to clipboard</li>
+              <li>Open bKash app or dial <strong>*247#</strong></li>
+              <li>Go to <strong>Send Money</strong></li>
               <li><strong>Long-press & paste</strong> the number in the &quot;To&quot; field</li>
               <li>Enter amount, confirm with PIN — done!</li>
             </ol>
             <p className="text-[10px] text-muted-foreground/70 mt-2">
-              The number is automatically copied to your clipboard
+              The number is automatically copied when you tap any button above
             </p>
           </div>
 
