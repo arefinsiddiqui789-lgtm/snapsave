@@ -696,6 +696,7 @@ export function Editor() {
               <ZoomableLightbox
                 src={lightboxImage}
                 onClose={() => setLightboxImage(null)}
+                onDelete={() => handleRemoveImage(lightboxImage)}
               />
             )}
           </AnimatePresence>
@@ -757,17 +758,20 @@ export function Editor() {
   );
 }
 
-/** Zoomable Lightbox — scroll/pinch to zoom, drag to pan, double-tap to reset */
-function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+/** Zoomable Lightbox — scroll/pinch to zoom, drag to pan, double-tap to reset, long-press to delete, download */
+function ZoomableLightbox({ src, onClose, onDelete }: { src: string; onClose: () => void; onDelete: () => void }) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const lastTouchDist = useRef<number | null>(null);
   const lastTapTime = useRef<number>(0);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const MIN_SCALE = 1;
   const MAX_SCALE = 8;
@@ -807,6 +811,30 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
     });
   }, []);
 
+  // Download image
+  const handleDownload = useCallback(() => {
+    const link = document.createElement('a');
+    link.href = src;
+    link.download = `snapnote-image-${Date.now()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowActions(false);
+  }, [src]);
+
+  // Confirm delete
+  const handleConfirmDelete = useCallback(() => {
+    onDelete();
+    onClose();
+  }, [onDelete, onClose]);
+
+  // Clear long press timer on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+  }, []);
+
   // Attach non-passive touch events for mobile pinch zoom + drag
   useEffect(() => {
     const el = wrapperRef.current;
@@ -814,18 +842,20 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
-        // Two fingers = pinch zoom
+        // Two fingers = pinch zoom — cancel long press
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         lastTouchDist.current = Math.sqrt(dx * dx + dy * dy);
       } else if (e.touches.length === 1) {
-        // One finger: check for double-tap, or start drag
+        // One finger: check for double-tap, start drag, or long-press
         const now = Date.now();
         const timeSince = now - lastTapTime.current;
         lastTapTime.current = now;
 
         if (timeSince < 300 && timeSince > 0) {
-          // Double tap detected
+          // Double tap detected — cancel long press
+          if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
           e.preventDefault();
           if (scaleRef.current > 1) {
             setScale(1);
@@ -836,6 +866,15 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
           return;
         }
 
+        // Start long-press timer (500ms)
+        touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        longPressTimer.current = setTimeout(() => {
+          // Haptic feedback if available
+          if (navigator.vibrate) navigator.vibrate(30);
+          setShowActions(true);
+        }, 500);
+
         if (scaleRef.current > 1) {
           dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
           posStart.current = { ...positionRef.current };
@@ -845,6 +884,16 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      // Cancel long press if finger moves too much
+      if (e.touches.length === 1 && longPressTimer.current) {
+        const dx = e.touches[0].clientX - touchStartPos.current.x;
+        const dy = e.touches[0].clientY - touchStartPos.current.y;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+      }
+
       if (e.touches.length === 2 && lastTouchDist.current !== null) {
         // Pinch zoom
         e.preventDefault();
@@ -873,6 +922,7 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
     };
 
     const handleTouchEnd = () => {
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
       lastTouchDist.current = null;
       setIsDragging(false);
     };
@@ -934,6 +984,12 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
     }
   }, [scale, resetView]);
 
+  // Right click / context menu (desktop) — show actions
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowActions(true);
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -956,6 +1012,7 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
       >
         <img
           src={src}
@@ -979,6 +1036,26 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
       >
         <X className="h-6 w-6" />
       </button>
+
+      {/* Top-left action buttons — Download & Delete */}
+      <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
+        <button
+          onClick={handleDownload}
+          className="h-12 w-12 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white active:bg-white/40 transition-colors"
+          title="Download image"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+        </button>
+        <button
+          onClick={() => setShowActions(true)}
+          className="h-12 w-12 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white active:bg-red-500/60 transition-colors"
+          title="Delete image"
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+      </div>
 
       {/* Zoom controls — mobile-friendly large buttons */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 backdrop-blur-md rounded-full px-4 py-2 z-10">
@@ -1009,14 +1086,64 @@ function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }
       </div>
 
       {/* Zoom hint — different for mobile vs desktop */}
-      <div className="absolute top-4 left-4 text-white/40 text-[11px] leading-relaxed z-10 hidden sm:block">
+      <div className="absolute top-20 left-4 text-white/40 text-[11px] leading-relaxed z-10 hidden sm:block">
         <p>Scroll to zoom · Drag to pan</p>
-        <p>Double-click to zoom 3×</p>
+        <p>Double-click to zoom 3× · Right-click for actions</p>
       </div>
-      <div className="absolute top-4 left-4 text-white/40 text-[11px] leading-relaxed z-10 sm:hidden">
+      <div className="absolute top-20 left-4 text-white/40 text-[11px] leading-relaxed z-10 sm:hidden">
         <p>Pinch to zoom · Drag to pan</p>
-        <p>Double-tap to zoom 3×</p>
+        <p>Double-tap to zoom 3× · Hold for actions</p>
       </div>
+
+      {/* Action sheet — confirm delete */}
+      <AnimatePresence>
+        {showActions && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-20 flex items-end sm:items-center justify-center bg-black/40"
+            onClick={() => setShowActions(false)}
+          >
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-zinc-900 rounded-2xl p-5 w-[90vw] max-w-[320px] shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-base font-bold text-foreground mb-1">Image Actions</p>
+              <p className="text-sm text-muted-foreground mb-5">What would you like to do?</p>
+
+              <div className="space-y-2">
+                <button
+                  onClick={handleDownload}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold text-sm active:scale-[0.97] transition-transform"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Image
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-semibold text-sm active:scale-[0.97] transition-transform"
+                >
+                  <Trash2 className="h-5 w-5" />
+                  Delete Image
+                </button>
+                <button
+                  onClick={() => setShowActions(false)}
+                  className="w-full flex items-center justify-center px-4 py-3.5 rounded-xl bg-secondary/50 text-muted-foreground font-semibold text-sm active:scale-[0.97] transition-transform"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
