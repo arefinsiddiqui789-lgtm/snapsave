@@ -39,21 +39,20 @@ function getReadTime(words: number): string {
   return `${minutes} min read`;
 }
 
-/** Compress image client-side and return as base64 data URL */
-function compressImageToBase64(file: File): Promise<string> {
+/** Store image client-side at high quality and return as base64 data URL */
+function imageToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX_WIDTH = 800;
-      const MAX_HEIGHT = 800;
+      const MAX_DIM = 3840; // 4K width
       let width = img.width;
       let height = img.height;
 
-      // Scale down to fit within max dimensions
-      if (width > MAX_WIDTH || height > MAX_HEIGHT) {
-        const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+      // Only scale down if image exceeds 4K resolution
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
         width = Math.round(width * ratio);
         height = Math.round(height * ratio);
       }
@@ -66,10 +65,13 @@ function compressImageToBase64(file: File): Promise<string> {
         reject(new Error('Canvas context not available'));
         return;
       }
+      // Use high-quality image rendering
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Convert to base64 data URL with compression
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+      // Convert to base64 data URL with very high quality (0.95 = near lossless)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
       resolve(dataUrl);
     };
     img.onerror = () => {
@@ -302,8 +304,8 @@ export function Editor() {
 
       setIsUploading(true);
       try {
-        // Compress and convert to base64 data URL entirely client-side
-        const dataUrl = await compressImageToBase64(file);
+        // Convert to high-quality base64 data URL entirely client-side
+        const dataUrl = await imageToBase64(file);
         addImage(activeNoteId, dataUrl);
         toast.success('Image added!');
       } catch {
@@ -688,33 +690,13 @@ export function Editor() {
             </div>
           )}
 
-          {/* Lightbox overlay */}
+          {/* Lightbox overlay with zoom support */}
           <AnimatePresence>
             {lightboxImage && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-                onClick={() => setLightboxImage(null)}
-              >
-                <motion.img
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  src={lightboxImage}
-                  alt="Full size image"
-                  className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <button
-                  onClick={() => setLightboxImage(null)}
-                  className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 border border-border/40 flex items-center justify-center text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </motion.div>
+              <ZoomableLightbox
+                src={lightboxImage}
+                onClose={() => setLightboxImage(null)}
+              />
             )}
           </AnimatePresence>
 
@@ -772,6 +754,228 @@ export function Editor() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Zoomable Lightbox — scroll/pinch to zoom, drag to pan, double-click to reset */
+function ZoomableLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const posStart = useRef({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const MIN_SCALE = 1;
+  const MAX_SCALE = 8;
+
+  const resetView = useCallback(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  }, []);
+
+  // Handle wheel zoom (desktop)
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.15 : 0.15;
+    setScale((prev) => {
+      const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev + delta * prev));
+      if (next <= MIN_SCALE) {
+        setPosition({ x: 0, y: 0 });
+      }
+      return next;
+    });
+  }, []);
+
+  // Handle mouse drag (desktop)
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (scale <= 1) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    posStart.current = { ...position };
+  }, [scale, position]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    setPosition({
+      x: posStart.current.x + dx,
+      y: posStart.current.y + dy,
+    });
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Double click to reset
+  const handleDoubleClick = useCallback(() => {
+    if (scale > 1) {
+      resetView();
+    } else {
+      setScale(3);
+    }
+  }, [scale, resetView]);
+
+  // Touch pinch zoom (mobile)
+  const lastTouchDist = useRef<number | null>(null);
+  const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastTouchDist.current = Math.sqrt(dx * dx + dy * dy);
+      lastTouchCenter.current = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      };
+    } else if (e.touches.length === 1 && scale > 1) {
+      dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      posStart.current = { ...position };
+      setIsDragging(true);
+    }
+  }, [scale, position]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastTouchDist.current) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const delta = dist / lastTouchDist.current;
+      setScale((prev) => {
+        const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * delta));
+        if (next <= MIN_SCALE) {
+          setPosition({ x: 0, y: 0 });
+        }
+        return next;
+      });
+      lastTouchDist.current = dist;
+    } else if (e.touches.length === 1 && isDragging) {
+      const dx = e.touches[0].clientX - dragStart.current.x;
+      const dy = e.touches[0].clientY - dragStart.current.y;
+      setPosition({
+        x: posStart.current.x + dx,
+        y: posStart.current.y + dy,
+      });
+    }
+  }, [isDragging]);
+
+  const handleTouchEnd = useCallback(() => {
+    lastTouchDist.current = null;
+    lastTouchCenter.current = null;
+    setIsDragging(false);
+  }, []);
+
+  // Zoom buttons
+  const zoomIn = useCallback(() => {
+    setScale((prev) => Math.min(MAX_SCALE, prev * 1.5));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setScale((prev) => {
+      const next = prev / 1.5;
+      if (next <= MIN_SCALE) {
+        setPosition({ x: 0, y: 0 });
+      }
+      return Math.max(MIN_SCALE, next);
+    });
+  }, []);
+
+  // Reset position when zoom goes back to 1 — handled in zoomOut and setScale calls
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center select-none"
+      onClick={(e) => {
+        if (e.target === containerRef.current) onClose();
+      }}
+      ref={containerRef}
+    >
+      {/* Interactive image wrapper — handles all zoom/pan gestures */}
+      <div
+        className="flex items-center justify-center overflow-hidden"
+        style={{ width: '100%', height: '100%' }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onDoubleClick={handleDoubleClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <motion.img
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{
+            scale: 1,
+            opacity: 1,
+          }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          src={src}
+          alt="Full size image"
+          className="max-w-[95vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
+          style={{
+            transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+            transformOrigin: 'center center',
+            cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+          }}
+          onClick={(e) => e.stopPropagation()}
+          draggable={false}
+        />
+      </div>
+
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 h-10 w-10 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-white hover:bg-destructive hover:text-white transition-colors z-10"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      {/* Zoom controls */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-1.5 z-10">
+        <button
+          onClick={zoomOut}
+          disabled={scale <= MIN_SCALE}
+          className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg font-bold"
+        >
+          −
+        </button>
+        <span className="text-white text-xs font-medium min-w-[48px] text-center tabular-nums">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          onClick={zoomIn}
+          disabled={scale >= MAX_SCALE}
+          className="h-8 w-8 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-lg font-bold"
+        >
+          +
+        </button>
+        <div className="w-px h-4 bg-white/30 mx-1" />
+        <button
+          onClick={resetView}
+          className="h-8 px-3 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors text-xs font-medium"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Zoom hint */}
+      <div className="absolute top-4 left-4 text-white/40 text-[10px] leading-relaxed z-10">
+        <p>Scroll to zoom · Drag to pan</p>
+        <p>Double-click to zoom 3×</p>
+      </div>
+    </motion.div>
   );
 }
 
