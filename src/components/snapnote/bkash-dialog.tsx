@@ -7,35 +7,12 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import Image from 'next/image';
 import { Copy, Check } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
 const BKASH_NUMBER = '01701659879';
-
-// bKash SVG Logo — simplified recognizable logo
-function BkashLogo({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 120 120"
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect width="120" height="120" rx="24" fill="#E2136E" />
-      <text
-        x="60"
-        y="75"
-        textAnchor="middle"
-        fill="white"
-        fontSize="52"
-        fontWeight="bold"
-        fontFamily="Arial, sans-serif"
-      >
-        b
-      </text>
-    </svg>
-  );
-}
 
 interface BkashDialogProps {
   open: boolean;
@@ -86,7 +63,7 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
 
         <SheetHeader className="px-6 pt-1 pb-0">
           <SheetTitle className="flex items-center gap-2.5 text-lg">
-            <BkashLogo className="h-8 w-8 rounded-lg" />
+            <Image src="/bkash-logo.png" alt="bKash" width={32} height={32} className="rounded-lg" />
             Support via bKash
           </SheetTitle>
           <SheetDescription className="text-left">
@@ -97,7 +74,7 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
         <div className="flex flex-col items-center gap-5 px-6 py-5">
           {/* bKash Logo Large */}
           <div className="h-20 w-20 rounded-2xl bg-[#E2136E]/10 dark:bg-[#E2136E]/15 flex items-center justify-center border border-[#E2136E]/20">
-            <BkashLogo className="h-16 w-16 rounded-xl" />
+            <Image src="/bkash-logo.png" alt="bKash" width={64} height={64} className="rounded-xl" />
           </div>
 
           {/* bKash Number Display */}
