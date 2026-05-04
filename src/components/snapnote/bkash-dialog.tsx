@@ -7,15 +7,12 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Copy, Check, ExternalLink } from 'lucide-react';
+import { Copy, Check, Send, ExternalLink } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
 const BKASH_NUMBER = '01701659879';
-
-// bKash app package name (Android)
 const BKASH_ANDROID_PACKAGE = 'com.bKash.customerapp';
-// bKash App Store ID (iOS)
 const BKASH_IOS_APP_ID = '1351183172';
 
 interface BkashDialogProps {
@@ -27,7 +24,6 @@ function copyToClipboard(text: string): Promise<boolean> {
   return navigator.clipboard.writeText(text)
     .then(() => true)
     .catch(() => {
-      // Fallback for older mobile browsers
       const textarea = document.createElement('textarea');
       textarea.value = text;
       textarea.style.position = 'fixed';
@@ -60,6 +56,49 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
       toast.error('Failed to copy. Please select and copy manually.');
     }
   }, []);
+
+  // Send Money: copy number + open bKash app using a real <a> tag click
+  // Using <a> with intent:// is the officially supported way in Android Chrome
+  // It works differently from window.location.href — Chrome handles it natively
+  const handleSendMoney = useCallback(async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault(); // Stop navigation temporarily
+
+    // Step 1: Copy number to clipboard
+    await copyToClipboard(BKASH_NUMBER);
+    toast.success('Number copied! Opening bKash...');
+
+    // Step 2: Open bKash app using the <a> tag's href natively
+    // This is more reliable than window.location.href for intent:// URLs
+    const link = e.currentTarget;
+    // Use a tiny timeout so the toast shows first
+    setTimeout(() => {
+      link.click(); // Re-trigger the <a> tag's native navigation
+    }, 100);
+
+    // Close the sheet
+    setTimeout(() => {
+      onOpenChange(false);
+    }, 500);
+  }, [onOpenChange]);
+
+  // Detect platform for the correct app link
+  const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/i.test(navigator.userAgent);
+
+  // Build the correct href based on platform
+  const getSendMoneyHref = () => {
+    if (isAndroid) {
+      // Android Chrome: intent:// URL with Play Store fallback
+      // This is the official Google-recommended format for opening apps from web pages
+      return `intent://#Intent;package=${BKASH_ANDROID_PACKAGE};S.browser_fallback_url=${encodeURIComponent(`https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`)};end`;
+    }
+    if (isIOS) {
+      // iOS: Direct App Store link (has "Open" button if app is installed)
+      return `https://apps.apple.com/app/id${BKASH_IOS_APP_ID}`;
+    }
+    // Desktop: Play Store page
+    return `https://play.google.com/store/apps/details?id=${BKASH_ANDROID_PACKAGE}`;
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -102,19 +141,30 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
 
           {/* Action Buttons */}
           <div className="w-full space-y-3">
-            {/* Copy Number Button — PRIMARY action (most reliable) */}
+            {/* Send Money Button — PRIMARY action
+                Uses a real <a> tag so Android Chrome handles intent:// natively */}
+            <a
+              href={getSendMoneyHref()}
+              onClick={handleSendMoney}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-4 rounded-2xl text-base font-bold transition-all active:scale-95 bg-[#E2136E] text-white shadow-lg shadow-[#E2136E]/30 no-underline"
+            >
+              <Send className="h-5 w-5" />
+              Send Money
+            </a>
+
+            {/* Copy Number Button — secondary */}
             <button
               onClick={handleCopy}
-              className={`w-full flex items-center justify-center gap-2.5 px-4 py-4 rounded-2xl text-base font-bold transition-all active:scale-95 ${
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${
                 copied
-                  ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
-                  : 'bg-[#E2136E] text-white shadow-lg shadow-[#E2136E]/30'
+                  ? 'bg-green-50 dark:bg-green-900/15 border border-green-200 dark:border-green-800/30 text-green-600 dark:text-green-400'
+                  : 'bg-[#E2136E]/10 dark:bg-[#E2136E]/15 border border-[#E2136E]/20 text-[#E2136E]'
               }`}
             >
               {copied ? (
                 <>
                   <Check className="h-5 w-5" />
-                  Number Copied!
+                  Copied!
                 </>
               ) : (
                 <>
@@ -123,19 +173,20 @@ export function BkashDialog({ open, onOpenChange }: BkashDialogProps) {
                 </>
               )}
             </button>
-
           </div>
 
           {/* Instructions */}
           <div className="w-full bg-secondary/30 rounded-2xl p-4 space-y-2">
-            <p className="text-xs font-semibold text-foreground">How to send money:</p>
+            <p className="text-xs font-semibold text-foreground">How to send:</p>
             <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
-              <li>Tap <strong>Copy Number</strong> to copy the number</li>
-              <li>Open bKash app → <strong>Send Money</strong></li>
+              <li>Tap <strong>Send Money</strong> — number auto-copied & bKash opens</li>
+              <li>In bKash, go to <strong>Send Money</strong></li>
               <li><strong>Long-press & paste</strong> the number in the &quot;To&quot; field</li>
               <li>Enter amount, confirm with PIN — done!</li>
             </ol>
-
+            <p className="text-[10px] text-muted-foreground/70 mt-2">
+              The number is automatically copied to your clipboard
+            </p>
           </div>
 
           {/* App download links */}
